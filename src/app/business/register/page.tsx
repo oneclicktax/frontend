@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PlusCircle, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import type { Business as ApiBusiness } from "@/mocks/businesses";
 import {
   Drawer,
   DrawerContent,
@@ -35,11 +37,34 @@ export default function BusinessRegisterPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pendingBusiness, setPendingBusiness] = useState<Business | null>(null);
 
+  const MAX_BUSINESSES = 5;
+
+  const { data: existingBusinesses = [] } = useQuery<ApiBusiness[]>({
+    queryKey: ["businesses"],
+    queryFn: async () => {
+      const res = await fetch("/api/businesses");
+      if (!res.ok) throw new Error();
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (existingBusinesses.length > 0 && businesses.length === 0) {
+      setBusinesses(
+        existingBusinesses.map((b) => ({ name: b.name, number: b.number }))
+      );
+    }
+  }, [existingBusinesses]);
+
   const rawDigits = input.replace(/\D/g, "");
   const isValidLength = rawDigits.length === 10;
 
   async function handleAdd() {
     if (!isValidLength || loading) return;
+    if (businesses.length >= MAX_BUSINESSES) {
+      toast.error("사업장은 최대 5개까지 등록할 수 있습니다.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -172,7 +197,7 @@ export default function BusinessRegisterPage() {
           disabled={businesses.length === 0}
           className="w-full rounded-2xl bg-primary-100 py-4 text-base font-bold text-white disabled:bg-primary-40"
         >
-          확인
+          저장({businesses.length} / {MAX_BUSINESSES})
         </button>
       </div>
 

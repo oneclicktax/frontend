@@ -36,6 +36,49 @@ export const handlers = [
     return HttpResponse.json(businesses);
   }),
 
+  // 알림 내역 조회
+  http.get("/api/notifications", async () => {
+    await delay(300);
+    return HttpResponse.json([
+      {
+        id: 1,
+        type: "info",
+        date: "2026.02.09 16:00",
+        title: "원천세 신고 기간 안내",
+        description: "2026년 2월 10일까지 원천세를 제출해야해요.",
+      },
+      {
+        id: 2,
+        type: "error",
+        date: "2026.02.09 16:00",
+        title: "원천세 신고 중 오류 발생",
+        description:
+          "2026년 1월 귀속 원천세 신고 과정에서 오류가 발생했어요.",
+      },
+      {
+        id: 3,
+        type: "success",
+        date: "2026.02.09 16:00",
+        title: "원천세 신고 완료",
+        description: "2026년 1월 귀속 원천세 신고를 완료했어요.",
+      },
+      {
+        id: 4,
+        type: "info",
+        date: "2026.01.05 10:00",
+        title: "원천세 신고 기간 안내",
+        description: "2026년 1월 10일까지 원천세를 제출해야해요.",
+      },
+      {
+        id: 5,
+        type: "info",
+        date: "2025.12.05 10:00",
+        title: "원천세 신고 기간 안내",
+        description: "2025년 12월 10일까지 원천세를 제출해야해요.",
+      },
+    ]);
+  }),
+
   // 사업장 월별 상태 조회
   http.get("/api/business/:id/month-statuses", async ({ params }) => {
     await delay(300);
