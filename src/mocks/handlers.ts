@@ -1,6 +1,41 @@
 import { http, HttpResponse, delay } from "msw";
 import { businesses, getSchedule, getMonthStatuses } from "./businesses";
 
+interface MockDocument {
+  id: number;
+  name: string;
+  category: "지급대장" | "원천세" | "지급명세서";
+  month: number;
+}
+
+const documentsByBusiness: Record<number, MockDocument[]> = {
+  1: [
+    // 1월
+    { id: 1, name: "1월 국세 접수증", category: "원천세", month: 1 },
+    { id: 2, name: "1월 지방세 접수증", category: "원천세", month: 1 },
+    { id: 3, name: "1월 국세 납부서", category: "원천세", month: 1 },
+    { id: 4, name: "1월 지방세 납부서", category: "원천세", month: 1 },
+    { id: 5, name: "1월 원천징수이행 상황신고서", category: "원천세", month: 1 },
+    { id: 6, name: "1월 간이지급명세서", category: "지급명세서", month: 1 },
+    { id: 7, name: "1월 지급대장", category: "지급대장", month: 1 },
+    { id: 8, name: "1월 소수진 지급내역서", category: "지급대장", month: 1 },
+    { id: 9, name: "1월 홍길동 지급내역서", category: "지급대장", month: 1 },
+    // 2월
+    { id: 10, name: "2월 간이지급명세서", category: "지급명세서", month: 2 },
+    { id: 11, name: "2월 국세 접수증", category: "원천세", month: 2 },
+    { id: 12, name: "2월 지방세 접수증", category: "원천세", month: 2 },
+    { id: 13, name: "2월 지급대장", category: "지급대장", month: 2 },
+    // 3월
+    { id: 14, name: "3월 간이지급명세서", category: "지급명세서", month: 3 },
+  ],
+  2: [
+    { id: 15, name: "1월 국세 접수증", category: "원천세", month: 1 },
+    { id: 16, name: "1월 지방세 접수증", category: "원천세", month: 1 },
+    { id: 17, name: "1월 간이지급명세서", category: "지급명세서", month: 1 },
+    { id: 18, name: "1월 지급대장", category: "지급대장", month: 1 },
+  ],
+};
+
 export const handlers = [
   // 유저 정보 조회
   http.get("/api/user", () => {
@@ -93,6 +128,22 @@ export const handlers = [
     }
 
     return HttpResponse.json(getMonthStatuses(id));
+  }),
+
+  // 사업장 문서 목록 조회
+  http.get("/api/business/:id/documents", async ({ params }) => {
+    await delay(300);
+
+    const id = Number(params.id);
+    const docs = documentsByBusiness[id];
+    if (!docs) {
+      return HttpResponse.json(
+        { message: "사업장을 찾을 수 없습니다." },
+        { status: 404 }
+      );
+    }
+
+    return HttpResponse.json(docs);
   }),
 
   // 사업장 신고 일정 조회
