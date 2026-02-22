@@ -19,11 +19,23 @@ import {
   type MonthStatus,
 } from "@/components/MonthScroller";
 import { Button } from "@/components/ui/button";
-import type {
-  TaxStatus,
-  TaxSchedule,
-  MonthStatusType,
-} from "@/mocks/businesses";
+
+type TaxStatus =
+  | "required"
+  | "completed"
+  | "overdue"
+  | "hometax_required"
+  | "empty"
+  | "error_resolving"
+  | "refile_required";
+
+interface TaxSchedule {
+  label: string;
+  deadline: string;
+  status: TaxStatus;
+}
+
+type MonthStatusType = "default" | "completed" | "locked" | "error";
 
 interface Business {
   id: number;
@@ -153,11 +165,13 @@ export default function BusinessDetailPage() {
   } = useQuery<{ business: Business; schedule: TaxSchedule | null }>({
     queryKey: ["schedule", businessId, selected.year, selected.month],
     queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
       const res = await fetchWithAuth(
-        `/api/business/${businessId}/schedules?year=${selected.year}&month=${selected.month}`
+        `${apiUrl}/api/business/${businessId}/schedules?year=${selected.year}&month=${selected.month}`
       );
       if (!res.ok) throw new Error();
-      return res.json();
+      const json = await res.json();
+      return json.data;
     },
   });
 
@@ -166,9 +180,11 @@ export default function BusinessDetailPage() {
   >({
     queryKey: ["monthStatuses", businessId],
     queryFn: async () => {
-      const res = await fetchWithAuth(`/api/business/${businessId}/month-statuses`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/business/${businessId}/month-statuses`);
       if (!res.ok) throw new Error();
-      return res.json();
+      const json = await res.json();
+      return json.data;
     },
   });
 
