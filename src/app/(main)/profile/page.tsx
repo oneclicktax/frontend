@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Bell, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { removeAccessToken } from "@/lib/auth";
+import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/api";
 
 const menuItems = [
   { label: "계정 설정", href: "/profile/account" },
@@ -16,8 +18,23 @@ const menuItems = [
   { label: "앱 공유하기", href: "#" },
 ];
 
+interface MemberMe {
+  name: string;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
+
+  const { data: member } = useQuery<MemberMe>({
+    queryKey: ["member", "me"],
+    queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      return json.data;
+    },
+  });
 
   return (
     <div className="px-5">
@@ -36,7 +53,9 @@ export default function ProfilePage() {
       </header>
 
       {/* 유저 이름 */}
-      <h1 className="mt-6 text-3xl font-bold text-black-100">소수진 님</h1>
+      <h1 className="mt-6 text-3xl font-bold text-black-100">
+        {member?.name ?? ""} 님
+      </h1>
 
       {/* 내 정보 */}
       <section className="mt-8">
