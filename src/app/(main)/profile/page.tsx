@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Bell, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { removeAccessToken } from "@/lib/auth";
 
 const menuItems = [
   { label: "계정 설정", href: "/profile/account" },
@@ -61,7 +62,8 @@ export default function ProfilePage() {
           variant="outline"
           className="mt-2 h-14 w-full rounded-lg border-black-40 text-base font-bold text-black-60"
           onClick={() => {
-            // TODO: 로그아웃 처리
+            removeAccessToken();
+            router.replace("/login");
           }}
         >
           로그아웃

@@ -6,6 +6,7 @@ import { ArrowLeft, PlusCircle, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/api";
 import type { Business as ApiBusiness } from "@/mocks/businesses";
 import {
   Drawer,
@@ -42,7 +43,7 @@ export default function BusinessRegisterPage() {
   const { data: existingBusinesses = [] } = useQuery<ApiBusiness[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const res = await fetch("/api/businesses");
+      const res = await fetchWithAuth("/api/businesses");
       if (!res.ok) throw new Error();
       return res.json();
     },
@@ -68,7 +69,7 @@ export default function BusinessRegisterPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/business/lookup/${rawDigits}`);
+      const res = await fetchWithAuth(`/api/business/lookup/${rawDigits}`);
       if (!res.ok) throw new Error("조회 실패");
 
       const data = await res.json();

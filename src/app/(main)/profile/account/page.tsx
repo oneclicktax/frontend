@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/api";
 import type { Business } from "@/mocks/businesses";
 
 export default function AccountPage() {
@@ -12,7 +13,7 @@ export default function AccountPage() {
   const { data: businesses = [] } = useQuery<Business[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const res = await fetch("/api/businesses");
+      const res = await fetchWithAuth("/api/businesses");
       if (!res.ok) throw new Error();
       return res.json();
     },

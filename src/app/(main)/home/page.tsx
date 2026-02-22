@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { Bell, Settings, Plus, ChevronRight, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/api";
 import type { Business } from "@/mocks/businesses";
 
 export default function HomePage() {
   const { data: businesses = [], isLoading } = useQuery<Business[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const res = await fetch("/api/businesses");
+      const res = await fetchWithAuth("/api/businesses");
       if (!res.ok) throw new Error();
       return res.json();
     },

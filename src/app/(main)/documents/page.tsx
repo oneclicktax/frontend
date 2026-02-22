@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Settings, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/api";
 import type { Business } from "@/mocks/businesses";
 import {
   Drawer,
@@ -52,7 +53,7 @@ export default function DocumentsPage() {
   const { data: businesses = [] } = useQuery<Business[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const res = await fetch("/api/businesses");
+      const res = await fetchWithAuth("/api/businesses");
       if (!res.ok) throw new Error();
       return res.json();
     },
@@ -63,7 +64,7 @@ export default function DocumentsPage() {
   const { data: documents = [] } = useQuery<Document[]>({
     queryKey: ["documents", businessId],
     queryFn: async () => {
-      const res = await fetch(`/api/business/${businessId}/documents`);
+      const res = await fetchWithAuth(`/api/business/${businessId}/documents`);
       if (!res.ok) throw new Error();
       return res.json();
     },

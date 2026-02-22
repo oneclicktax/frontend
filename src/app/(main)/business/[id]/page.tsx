@@ -12,6 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { fetchWithAuth } from "@/lib/api";
 import {
   MonthScroller,
   type MonthItem,
@@ -49,7 +50,7 @@ function StatusLabel({ status }: { status: TaxStatus }) {
     case "overdue":
       return <span className="text-sm font-bold text-black-100">신고 필요</span>;
     case "hometax_required":
-      return <span className="text-sm font-bold text-error-100">연동 필요</span>;
+      return <span className="text-sm font-bold text-black-40">연동 필요</span>;
     case "error_resolving":
       return <span className="text-sm font-bold text-error-100">오류 해결중</span>;
     case "refile_required":
@@ -129,7 +130,7 @@ export default function BusinessDetailPage() {
   const { data: businessList = [] } = useQuery<Business[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const res = await fetch("/api/businesses");
+      const res = await fetchWithAuth("/api/businesses");
       if (!res.ok) throw new Error();
       return res.json();
     },
@@ -141,7 +142,7 @@ export default function BusinessDetailPage() {
   } = useQuery<{ business: Business; schedule: TaxSchedule | null }>({
     queryKey: ["schedule", businessId, selected.year, selected.month],
     queryFn: async () => {
-      const res = await fetch(
+      const res = await fetchWithAuth(
         `/api/business/${businessId}/schedules?year=${selected.year}&month=${selected.month}`
       );
       if (!res.ok) throw new Error();
@@ -154,7 +155,7 @@ export default function BusinessDetailPage() {
   >({
     queryKey: ["monthStatuses", businessId],
     queryFn: async () => {
-      const res = await fetch(`/api/business/${businessId}/month-statuses`);
+      const res = await fetchWithAuth(`/api/business/${businessId}/month-statuses`);
       if (!res.ok) throw new Error();
       return res.json();
     },

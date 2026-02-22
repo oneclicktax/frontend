@@ -37,6 +37,27 @@ const documentsByBusiness: Record<number, MockDocument[]> = {
 };
 
 export const handlers = [
+  // 소셜 로그인 URL 조회 (개발용 mock)
+  http.get("/api/auth/social-login-url", ({ request }) => {
+    const url = new URL(request.url);
+    const socialLoginType = url.searchParams.get("socialLoginType");
+
+    if (socialLoginType === "KAKAO") {
+      // MSW 환경에서는 카카오 OAuth를 건너뛰고 바로 토큰 발급
+      const mockToken = "mock-jwt-token-for-development";
+      const successUrl = `${window.location.origin}/login/success?accessToken=${mockToken}`;
+
+      return HttpResponse.json({
+        socialLoginUrl: successUrl,
+      });
+    }
+
+    return HttpResponse.json(
+      { message: "지원하지 않는 소셜 로그인 타입입니다." },
+      { status: 400 }
+    );
+  }),
+
   // 유저 정보 조회
   http.get("/api/user", () => {
     return HttpResponse.json({
