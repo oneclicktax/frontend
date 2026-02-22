@@ -1,25 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Settings, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api";
-
-interface Business {
-  id: number;
-  name: string;
-  number: string;
-}
+import { Button } from "@/components/ui/button";
 import {
   Drawer,
   DrawerContent,
   DrawerHeader,
   DrawerTitle,
   DrawerDescription,
+  DrawerFooter,
 } from "@/components/ui/drawer";
+import {
+  WheelPicker,
+  WheelPickerWrapper,
+  type WheelPickerOption,
+} from "@/components/wheel-picker/wheel-picker";
 
-type Category = "전체" | "지급대장" | "원천세" | "지급명세서";
+interface Business {
+  id: number;
+  name: string;
+  number: string;
+}
 
 interface Document {
   id: number;
@@ -28,32 +33,31 @@ interface Document {
   month: number;
 }
 
-const categories: Category[] = ["전체", "지급대장", "원천세", "지급명세서"];
+type Category = "전체" | "신고내역" | "원천세" | "지급명세서";
 
-const months = [
-  { value: 0, label: "전체" },
-  { value: 1, label: "1월" },
-  { value: 2, label: "2월" },
-  { value: 3, label: "3월" },
-  { value: 4, label: "4월" },
-  { value: 5, label: "5월" },
-  { value: 6, label: "6월" },
-  { value: 7, label: "7월" },
-  { value: 8, label: "8월" },
-  { value: 9, label: "9월" },
-  { value: 10, label: "10월" },
-  { value: 11, label: "11월" },
-  { value: 12, label: "12월" },
-];
+const categories: Category[] = ["전체", "신고내역", "원천세", "지급명세서"];
+
+const categoryDocTypes: Record<Category, string[] | null> = {
+  전체: null,
+  신고내역: ["지급대장", "지급내역서"],
+  원천세: ["국세 접수증", "국세 납부서", "지방세 접수증", "지방세 납부서", "원천징수이행 상황신고서"],
+  지급명세서: ["간이지급명세서"],
+};
 
 export default function DocumentsPage() {
   const router = useRouter();
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(
-    null
+    null,
   );
   const [selectedCategory, setSelectedCategory] = useState<Category>("전체");
-  const [selectedMonth, setSelectedMonth] = useState(0);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [businessDrawerOpen, setBusinessDrawerOpen] = useState(false);
+  const [dateDrawerOpen, setDateDrawerOpen] = useState(false);
+
+  const currentYear = new Date().getFullYear();
+  const [draftYear, setDraftYear] = useState(currentYear);
+  const [draftMonth, setDraftMonth] = useState(1);
 
   const { data: businesses = [] } = useQuery<Business[]>({
     queryKey: ["businesses"],
@@ -85,11 +89,48 @@ export default function DocumentsPage() {
   const selectedBusiness = businesses.find((b) => b.id === businessId);
 
   const filtered = documents.filter((doc) => {
-    if (selectedCategory !== "전체" && doc.category !== selectedCategory)
+    const docTypes = categoryDocTypes[selectedCategory];
+    if (docTypes && !docTypes.some((type) => doc.name.includes(type))) {
       return false;
-    if (selectedMonth !== 0 && doc.month !== selectedMonth) return false;
+    }
+    if (selectedMonth !== null && doc.month !== selectedMonth) return false;
     return true;
   });
+
+  const yearOptions: WheelPickerOption<number>[] = useMemo(
+    () =>
+      Array.from({ length: 5 }, (_, i) => ({
+        label: `${currentYear - 2 + i}년`,
+        value: currentYear - 2 + i,
+      })),
+    [currentYear],
+  );
+
+  const monthOptions: WheelPickerOption<number>[] = useMemo(
+    () =>
+      Array.from({ length: 12 }, (_, i) => ({
+        label: `${i + 1}월`,
+        value: i + 1,
+      })),
+    [],
+  );
+
+  const handleOpenDatePicker = () => {
+    setDraftYear(selectedYear ?? currentYear);
+    setDraftMonth(selectedMonth ?? 1);
+    setDateDrawerOpen(true);
+  };
+
+  const handleConfirmDate = () => {
+    setSelectedYear(draftYear);
+    setSelectedMonth(draftMonth);
+    setDateDrawerOpen(false);
+  };
+
+  const dateLabel =
+    selectedYear !== null && selectedMonth !== null
+      ? `${String(selectedYear).slice(2)}년 ${selectedMonth}월`
+      : null;
 
   return (
     <div className="px-5">
@@ -115,7 +156,7 @@ export default function DocumentsPage() {
       {/* 사업장 선택 */}
       <button
         type="button"
-        onClick={() => setDrawerOpen(true)}
+        onClick={() => setBusinessDrawerOpen(true)}
         className="mt-2 flex items-center gap-1.5 rounded-full bg-black-10 px-4 py-3"
       >
         <span className="text-base font-bold text-black-100">
@@ -142,27 +183,22 @@ export default function DocumentsPage() {
         ))}
       </div>
 
-      {/* 월 필터 */}
-      <div className="scrollbar-hide mt-2.5 flex gap-2.5 overflow-x-auto">
-        {months.map((m) => (
-          <button
-            key={m.value}
-            type="button"
-            onClick={() => setSelectedMonth(m.value)}
-            className={`flex h-[38px] shrink-0 items-center justify-center rounded-lg px-2.5 text-xs font-medium ${
-              selectedMonth === m.value
-                ? "bg-primary-100 text-white"
-                : "border border-black-40 bg-white text-black-100"
-            }`}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
+      {/* 월 선택 카드 */}
+      <button
+        type="button"
+        onClick={handleOpenDatePicker}
+        className="mt-4 flex h-12 w-full items-center justify-between rounded-lg bg-white px-4 shadow-[0px_0px_14px_0px_rgba(0,0,0,0.13)]"
+      >
+        <span
+          className={`text-sm font-bold ${dateLabel ? "text-black-100" : "text-black-40"}`}
+        >
+          {dateLabel ?? "월 선택"}
+        </span>
+        <ChevronDown size={24} className="text-black-60" />
+      </button>
 
       {/* 문서 테이블 */}
       <div className="mt-5">
-        {/* 헤더 */}
         <div className="flex items-center justify-between">
           <span className="text-base font-semibold text-black-60">
             문서 이름
@@ -172,7 +208,6 @@ export default function DocumentsPage() {
           </span>
         </div>
 
-        {/* 문서 목록 */}
         <ul className="mt-4 flex flex-col gap-4">
           {filtered.map((doc) => (
             <li
@@ -202,7 +237,7 @@ export default function DocumentsPage() {
       </div>
 
       {/* 사업장 선택 Drawer */}
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+      <Drawer open={businessDrawerOpen} onOpenChange={setBusinessDrawerOpen}>
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle>사업장 선택</DrawerTitle>
@@ -217,7 +252,7 @@ export default function DocumentsPage() {
                 type="button"
                 onClick={() => {
                   setSelectedBusinessId(biz.id);
-                  setDrawerOpen(false);
+                  setBusinessDrawerOpen(false);
                 }}
                 className={`rounded-xl px-4 py-3 text-left ${
                   biz.id === businessId ? "bg-primary-40" : ""
@@ -230,6 +265,38 @@ export default function DocumentsPage() {
               </button>
             ))}
           </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* 연/월 선택 Drawer */}
+      <Drawer open={dateDrawerOpen} onOpenChange={setDateDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle className="text-center text-base font-bold text-black-100">
+              연/월 선택
+            </DrawerTitle>
+          </DrawerHeader>
+
+          <div className="flex justify-center px-6 py-4">
+            <WheelPickerWrapper className="w-full border-none shadow-none">
+              <WheelPicker<number>
+                options={yearOptions}
+                value={draftYear}
+                onValueChange={(v) => setDraftYear(v)}
+              />
+              <WheelPicker<number>
+                options={monthOptions}
+                value={draftMonth}
+                onValueChange={(v) => setDraftMonth(v)}
+              />
+            </WheelPickerWrapper>
+          </div>
+
+          <DrawerFooter>
+            <Button onClick={handleConfirmDate} size="xl" className="w-full">
+              선택 완료
+            </Button>
+          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>
