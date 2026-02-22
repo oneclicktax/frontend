@@ -1,13 +1,45 @@
 "use client";
 
 import { Suspense } from "react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { IncomeEarner, TaxCalculation } from "./types";
+
+function getDraftKey(businessId: number, year: number, month: number) {
+  return `Oneclicktax.draft_${businessId}_${year}_${month}`;
+}
+
+function loadDraft(key: string): IncomeEarner[] | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function saveDraft(key: string, earners: IncomeEarner[]) {
+  try {
+    if (earners.length === 0) {
+      localStorage.removeItem(key);
+    } else {
+      localStorage.setItem(key, JSON.stringify(earners));
+    }
+  } catch {}
+}
+
+function removeDraft(key: string) {
+  try {
+    localStorage.removeItem(key);
+  } catch {}
+}
 import { StepHeader } from "./_components/StepHeader";
 import { StepBusinessInfo } from "./_components/StepBusinessInfo";
 import { StepEarnerInfo } from "./_components/StepEarnerInfo";
@@ -41,8 +73,28 @@ function WithholdingTaxContent() {
     searchParams.get("month") || new Date().getMonth() + 1,
   );
 
+  const draftKey = getDraftKey(businessId, year, month);
+
   const [step, setStep] = useState(1);
   const [earners, setEarners] = useState<IncomeEarner[]>([]);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
+  useEffect(() => {
+    const saved = loadDraft(draftKey);
+    if (saved) {
+      setEarners(saved);
+      toast.info("임시 저장된 소득자 정보를 불러왔습니다.");
+    }
+    setDraftLoaded(true);
+  }, [draftKey]);
+
+  const handleEarnersChange = useCallback(
+    (newEarners: IncomeEarner[]) => {
+      setEarners(newEarners);
+      saveDraft(draftKey, newEarners);
+    },
+    [draftKey],
+  );
 
   const { data: business, isLoading } = useQuery<{
     name: string;
@@ -84,11 +136,12 @@ function WithholdingTaxContent() {
   };
 
   const handleSubmit = () => {
+    removeDraft(draftKey);
     toast.success("원천세 신고가 완료되었습니다.");
     router.push(`/business/${businessId}`);
   };
 
-  if (isLoading || !business) {
+  if (isLoading || !business || !draftLoaded) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Loader2 size={32} className="animate-spin text-primary-100" />
@@ -114,7 +167,7 @@ function WithholdingTaxContent() {
         {step === 2 && (
           <StepEarnerInfo
             earners={earners}
-            onEarnersChange={setEarners}
+            onEarnersChange={handleEarnersChange}
             onNext={() => setStep(3)}
           />
         )}
