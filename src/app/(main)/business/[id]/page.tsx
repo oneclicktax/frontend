@@ -22,9 +22,14 @@ import { Button } from "@/components/ui/button";
 import type {
   TaxStatus,
   TaxSchedule,
-  Business,
   MonthStatusType,
 } from "@/mocks/businesses";
+
+interface Business {
+  id: number;
+  name: string;
+  number: string;
+}
 
 function StatusIcon({ status }: { status: TaxStatus }) {
   switch (status) {
@@ -130,9 +135,15 @@ export default function BusinessDetailPage() {
   const { data: businessList = [] } = useQuery<Business[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const res = await fetchWithAuth("/api/businesses");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/companies`);
       if (!res.ok) throw new Error();
-      return res.json();
+      const json = await res.json();
+      return (json.data ?? []).map((b: any) => ({
+        id: b.id,
+        name: b.name,
+        number: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
+      }));
     },
   });
 

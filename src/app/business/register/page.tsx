@@ -5,9 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, PlusCircle, XCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api";
-import type { Business as ApiBusiness } from "@/mocks/businesses";
 import {
   Drawer,
   DrawerContent,
@@ -32,6 +31,7 @@ function formatBusinessNumber(value: string) {
 
 export default function BusinessRegisterPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [input, setInput] = useState("");
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(false);
@@ -40,20 +40,23 @@ export default function BusinessRegisterPage() {
 
   const MAX_BUSINESSES = 5;
 
-  const { data: existingBusinesses = [] } = useQuery<ApiBusiness[]>({
+  const { data: existingBusinesses = [] } = useQuery<Business[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const res = await fetchWithAuth("/api/businesses");
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/companies`);
       if (!res.ok) throw new Error();
-      return res.json();
+      const json = await res.json();
+      return (json.data ?? []).map((b: any) => ({
+        name: b.name,
+        number: formatBusinessNumber(b.bizNumber),
+      }));
     },
   });
 
   useEffect(() => {
     if (existingBusinesses.length > 0 && businesses.length === 0) {
-      setBusinesses(
-        existingBusinesses.map((b) => ({ name: b.name, number: b.number }))
-      );
+      setBusinesses(existingBusinesses);
     }
   }, [existingBusinesses]);
 
@@ -67,10 +70,15 @@ export default function BusinessRegisterPage() {
       return;
     }
 
+    if (businesses.some((b) => b.number.replace(/\s/g, "") === rawDigits)) {
+      toast.error("이미 목록에 있는 사업장입니다.");
+      return;
+    }
+
     setLoading(true);
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/company/lookup/${rawDigits}`);
+      const res = await fetchWithAuth(`${apiUrl}/api/companies/lookup/${rawDigits}`);
       if (!res.ok) throw new Error("조회 실패");
 
       const json = await res.json();
@@ -98,10 +106,25 @@ export default function BusinessRegisterPage() {
     setBusinesses((prev) => prev.filter((_, i) => i !== index));
   }
 
-  function handleSubmit() {
-    if (businesses.length === 0) return;
-    // TODO: API 연동
-    router.push("/home");
+  async function handleSubmit() {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    try {
+      const res = await fetchWithAuth(`${apiUrl}/api/companies`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businesses: businesses.map((b) => ({
+            name: b.name,
+            bizNumber: b.number.replace(/\s/g, ""),
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      await queryClient.invalidateQueries({ queryKey: ["businesses"] });
+      router.push("/home");
+    } catch {
+      toast.error("사업장 저장에 실패했습니다.");
+    }
   }
 
   return (
@@ -196,7 +219,7 @@ export default function BusinessRegisterPage() {
         <button
           type="button"
           onClick={handleSubmit}
-          disabled={businesses.length === 0}
+          disabled={false}
           className="w-full rounded-2xl bg-primary-100 py-4 text-base font-bold text-white disabled:bg-primary-40"
         >
           저장({businesses.length} / {MAX_BUSINESSES})

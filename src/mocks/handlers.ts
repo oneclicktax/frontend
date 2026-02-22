@@ -67,12 +67,6 @@ export const handlers = [
     });
   }),
 
-  // 사업장 목록 조회
-  http.get("/api/businesses", async () => {
-    await delay(300);
-    return HttpResponse.json(businesses);
-  }),
-
   // 알림 내역 조회
   http.get("/api/notifications", async () => {
     await delay(300);
