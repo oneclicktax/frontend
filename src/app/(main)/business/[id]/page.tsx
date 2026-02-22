@@ -18,7 +18,6 @@ import {
   type MonthItem,
   type MonthStatus,
 } from "@/components/MonthScroller";
-import { Button } from "@/components/ui/button";
 
 type TaxStatus =
   | "required"
@@ -301,7 +300,24 @@ export default function BusinessDetailPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between rounded-2xl border border-black-20 px-4 py-4">
+            <button
+              type="button"
+              onClick={() => {
+                if (
+                  schedule.status === "required" ||
+                  schedule.status === "overdue"
+                ) {
+                  router.push(
+                    `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule.status === "overdue" ? "&overdue=true" : ""}`,
+                  );
+                }
+              }}
+              className={`flex w-full items-center justify-between rounded-2xl border border-black-20 px-4 py-4 text-left ${
+                schedule.status === "required" || schedule.status === "overdue"
+                  ? "cursor-pointer active:bg-black-10"
+                  : "cursor-default"
+              }`}
+            >
               <div className="flex items-center gap-2">
                 <StatusIcon status={schedule.status} />
                 <span className="text-sm font-medium text-black-100">
@@ -310,17 +326,10 @@ export default function BusinessDetailPage() {
               </div>
               {schedule.status === "error_resolving" ||
               schedule.status === "refile_required" ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    // TODO: 상세 페이지 이동
-                  }}
-                  className="h-auto gap-1 px-2 py-1"
-                >
+                <div className="flex items-center gap-1 px-2 py-1">
                   <StatusLabel status={schedule.status} />
                   <ChevronRight size={16} className="text-error-100" />
-                </Button>
+                </div>
               ) : (
                 <div className="text-right">
                   <DeadlineLabel
@@ -330,7 +339,7 @@ export default function BusinessDetailPage() {
                   <StatusLabel status={schedule.status} />
                 </div>
               )}
-            </div>
+            </button>
 
             <InfoBanner status={schedule.status} />
           </>
