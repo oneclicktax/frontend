@@ -69,12 +69,13 @@ export default function BusinessRegisterPage() {
 
     setLoading(true);
     try {
-      const res = await fetchWithAuth(`/api/business/lookup/${rawDigits}`);
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/company/lookup/${rawDigits}`);
       if (!res.ok) throw new Error("조회 실패");
 
-      const data = await res.json();
+      const json = await res.json();
       setPendingBusiness({
-        name: data.name,
+        name: json.data.name,
         number: formatBusinessNumber(rawDigits),
       });
       setDrawerOpen(true);

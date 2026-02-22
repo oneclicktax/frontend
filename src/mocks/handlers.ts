@@ -67,25 +67,6 @@ export const handlers = [
     });
   }),
 
-  // 사업자등록번호 조회
-  http.get("/api/business/lookup/:businessNumber", async ({ params }) => {
-    await delay(1000);
-
-    const { businessNumber } = params;
-
-    if (businessNumber === "0000000000") {
-      return HttpResponse.json(
-        { message: "존재하지 않는 사업자등록번호입니다." },
-        { status: 404 }
-      );
-    }
-
-    return HttpResponse.json({
-      businessNumber,
-      name: "해보자 컴퍼니",
-    });
-  }),
-
   // 사업장 목록 조회
   http.get("/api/businesses", async () => {
     await delay(300);
