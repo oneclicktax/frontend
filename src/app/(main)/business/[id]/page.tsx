@@ -18,6 +18,8 @@ import {
   type MonthItem,
   type MonthStatus,
 } from "@/components/MonthScroller";
+import { FilingInfoDrawer } from "./_components/FilingInfoDrawer";
+import { DraftConfirmDrawer } from "./_components/DraftConfirmDrawer";
 
 type TaxStatus =
   | "required"
@@ -40,6 +42,40 @@ interface Business {
   id: number;
   name: string;
   number: string;
+}
+
+interface MemberMe {
+  name: string;
+  phoneNumber: string | null;
+  hometaxLoginId: string | null;
+  birthDate: string | null;
+  representName: string | null;
+}
+
+function isMemberInfoComplete(member: MemberMe | undefined): boolean {
+  if (!member) return false;
+  return (
+    !!member.name?.trim() &&
+    !!member.phoneNumber?.trim() &&
+    !!member.hometaxLoginId?.trim() &&
+    !!member.birthDate?.trim() &&
+    !!member.representName?.trim()
+  );
+}
+
+function getDraftKey(businessId: number, year: number, month: number) {
+  return `Oneclicktax.draft_${businessId}_${year}_${month}`;
+}
+
+function hasDraft(businessId: number, year: number, month: number): boolean {
+  try {
+    const raw = localStorage.getItem(getDraftKey(businessId, year, month));
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function StatusIcon({ status }: { status: TaxStatus }) {
@@ -141,7 +177,20 @@ export default function BusinessDetailPage() {
     month: now.getMonth() + 1,
   });
   const [selectorOpen, setSelectorOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [draftDrawerOpen, setDraftDrawerOpen] = useState(false);
   const selectorRef = useRef<HTMLDivElement>(null);
+
+  const { data: memberData } = useQuery<MemberMe>({
+    queryKey: ["member", "me"],
+    queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      return json.data;
+    },
+  });
 
   const { data: businessList = [] } = useQuery<Business[]>({
     queryKey: ["businesses"],
@@ -307,6 +356,14 @@ export default function BusinessDetailPage() {
                   schedule.status === "required" ||
                   schedule.status === "overdue"
                 ) {
+                  if (!isMemberInfoComplete(memberData)) {
+                    setDrawerOpen(true);
+                    return;
+                  }
+                  if (hasDraft(businessId, selected.year, selected.month)) {
+                    setDraftDrawerOpen(true);
+                    return;
+                  }
                   router.push(
                     `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule.status === "overdue" ? "&overdue=true" : ""}`,
                   );
@@ -345,6 +402,38 @@ export default function BusinessDetailPage() {
           </>
         )}
       </div>
+
+      <FilingInfoDrawer
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+        onComplete={() => {
+          if (hasDraft(businessId, selected.year, selected.month)) {
+            setDraftDrawerOpen(true);
+            return;
+          }
+          router.push(
+            `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
+          );
+        }}
+      />
+
+      <DraftConfirmDrawer
+        open={draftDrawerOpen}
+        onOpenChange={setDraftDrawerOpen}
+        onContinue={() => {
+          setDraftDrawerOpen(false);
+          router.push(
+            `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
+          );
+        }}
+        onDiscard={() => {
+          localStorage.removeItem(getDraftKey(businessId, selected.year, selected.month));
+          setDraftDrawerOpen(false);
+          router.push(
+            `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
+          );
+        }}
+      />
     </div>
   );
 }
