@@ -188,11 +188,12 @@ function WithholdingTaxContent() {
     if (!filingStatus) return;
 
     if (filingStatus.status === "COMPLETED") {
+      const completedJobId = filingJobId;
       setFilingJobId(null);
       setIsSubmitting(false);
       removeDraft(draftKey);
       toast.success("원천세 신고가 완료되었습니다.");
-      router.push(`/business/${businessId}`);
+      router.push(`/business/${businessId}?jobId=${completedJobId}`);
     } else if (filingStatus.status === "FAILED") {
       setFilingJobId(null);
       setIsSubmitting(false);

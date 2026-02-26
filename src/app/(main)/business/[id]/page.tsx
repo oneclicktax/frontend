@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ChevronDown,
@@ -10,6 +10,7 @@ import {
   CircleAlert,
   Lock,
   Loader2,
+  Download,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api";
@@ -165,9 +166,11 @@ function InfoBanner({ status }: { status: TaxStatus }) {
   return null;
 }
 
-export default function BusinessDetailPage() {
+function BusinessDetailContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
+  const jobId = searchParams.get("jobId");
   const initialId = Number(params.id);
   const now = new Date();
 
@@ -256,6 +259,27 @@ export default function BusinessDetailPage() {
     businessList.find((b) => b.id === businessId)?.name ??
     "";
   const schedule = data?.schedule ?? null;
+
+  async function handleDownloadReceipt() {
+    if (!jobId) return;
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(
+        `${apiUrl}/api/companies/${businessId}/withholding-tax/filing/${jobId}/receipt`,
+      );
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `접수증_${jobId}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      const { toast } = await import("sonner");
+      toast.error("접수증 다운로드에 실패했습니다.");
+    }
+  }
 
   function getMonthStatus(item: MonthItem): MonthStatus {
     const key = `${item.year}-${item.month}`;
@@ -401,6 +425,19 @@ export default function BusinessDetailPage() {
             <InfoBanner status={schedule.status} />
           </>
         )}
+
+        {jobId && (
+          <button
+            type="button"
+            onClick={handleDownloadReceipt}
+            className="flex items-center gap-2 rounded-2xl border border-primary-100 px-4 py-4 active:bg-primary-100/10"
+          >
+            <Download size={20} className="text-primary-100" />
+            <span className="text-sm font-bold text-primary-100">
+              접수증 다운로드
+            </span>
+          </button>
+        )}
       </div>
 
       <FilingInfoDrawer
@@ -435,5 +472,13 @@ export default function BusinessDetailPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function BusinessDetailPage() {
+  return (
+    <Suspense>
+      <BusinessDetailContent />
+    </Suspense>
   );
 }
