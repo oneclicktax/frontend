@@ -98,7 +98,6 @@ function WithholdingTaxContent() {
     const saved = loadDraft(draftKey);
     if (saved) {
       setEarners(saved);
-      toast.info("임시 저장된 소득자 정보를 불러왔습니다.");
     }
     setDraftLoaded(true);
   }, [draftKey]);
@@ -264,6 +263,7 @@ function WithholdingTaxContent() {
           <StepBusinessInfo
             businessName={business.name}
             bizNumber={business.bizNumber}
+            member={member}
             onNext={() => setStep(2)}
           />
         )}
