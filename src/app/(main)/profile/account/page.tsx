@@ -20,6 +20,8 @@ interface MemberMe {
   phoneNumber: string | null;
   email: string | null;
   hometaxLoginId: string | null;
+  birthDate: string | null;
+  representName: string | null;
   socialLoginType: string;
 }
 
@@ -30,6 +32,8 @@ export default function AccountPage() {
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [hometaxLoginId, setHometaxLoginId] = useState("");
+  const [birthDate, setBirthDate] = useState("");
+  const [representName, setRepresentName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: member } = useQuery<MemberMe>({
@@ -63,6 +67,8 @@ export default function AccountPage() {
       setName(member.name ?? "");
       setPhoneNumber(member.phoneNumber ?? "");
       setHometaxLoginId(member.hometaxLoginId ?? "");
+      setBirthDate(member.birthDate ?? "");
+      setRepresentName(member.representName ?? "");
     }
   }, [member]);
 
@@ -77,7 +83,7 @@ export default function AccountPage() {
       const res = await fetchWithAuth(`${apiUrl}/api/members/me`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phoneNumber, hometaxLoginId }),
+        body: JSON.stringify({ name, phoneNumber, hometaxLoginId, birthDate, representName }),
       });
       if (!res.ok) throw new Error();
       await queryClient.invalidateQueries({ queryKey: ["member", "me"] });
@@ -136,6 +142,33 @@ export default function AccountPage() {
             value={hometaxLoginId}
             onChange={(e) => setHometaxLoginId(e.target.value)}
             maxLength={30}
+            className="h-14 rounded border border-black-40 px-4 text-base text-black-100 outline-none"
+          />
+        </div>
+
+        {/* 생년월일 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-base font-bold text-black-100">생년월일</label>
+          <input
+            type="text"
+            value={birthDate}
+            onChange={(e) =>
+              setBirthDate(e.target.value.replace(/[^0-9]/g, "").slice(0, 8))
+            }
+            placeholder="8자리 숫자 (예: 19900101)"
+            maxLength={8}
+            className="h-14 rounded border border-black-40 px-4 text-base text-black-100 outline-none"
+          />
+        </div>
+
+        {/* 대표자명 */}
+        <div className="flex flex-col gap-2">
+          <label className="text-base font-bold text-black-100">대표자명</label>
+          <input
+            type="text"
+            value={representName}
+            onChange={(e) => setRepresentName(e.target.value)}
+            placeholder="대표자명을 입력해주세요"
             className="h-14 rounded border border-black-40 px-4 text-base text-black-100 outline-none"
           />
         </div>
