@@ -9,7 +9,7 @@ interface StepBusinessInfoProps {
   member?: {
     name: string;
     phoneNumber: string | null;
-    hometaxLoginId: string | null;
+    hometaxUserId: string | null;
     birthDate: string | null;
     representName: string | null;
   };
@@ -85,7 +85,7 @@ export function StepBusinessInfo({
           </label>
           <Input
             readOnly
-            value={member?.hometaxLoginId ?? ""}
+            value={member?.hometaxUserId ?? ""}
             className="border-black-100 bg-black-20 font-bold tracking-wide"
           />
         </div>

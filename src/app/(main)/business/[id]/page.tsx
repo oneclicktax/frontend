@@ -47,7 +47,7 @@ interface Business {
 interface MemberMe {
   name: string;
   phoneNumber: string | null;
-  hometaxLoginId: string | null;
+  hometaxUserId: string | null;
   birthDate: string | null;
   representName: string | null;
 }
@@ -57,7 +57,7 @@ function isMemberInfoComplete(member: MemberMe | undefined): boolean {
   return (
     !!member.name?.trim() &&
     !!member.phoneNumber?.trim() &&
-    !!member.hometaxLoginId?.trim() &&
+    !!member.hometaxUserId?.trim() &&
     !!member.birthDate?.trim() &&
     !!member.representName?.trim()
   );

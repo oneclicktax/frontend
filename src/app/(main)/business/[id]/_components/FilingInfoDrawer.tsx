@@ -16,7 +16,7 @@ import {
 interface MemberMe {
   name: string;
   phoneNumber: string | null;
-  hometaxLoginId: string | null;
+  hometaxUserId: string | null;
   birthDate: string | null;
   representName: string | null;
 }
@@ -36,7 +36,7 @@ export function FilingInfoDrawer({
 
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [hometaxLoginId, setHometaxLoginId] = useState("");
+  const [hometaxUserId, setHometaxLoginId] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [representName, setRepresentName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -56,7 +56,7 @@ export function FilingInfoDrawer({
     if (member) {
       setName(member.name ?? "");
       setPhoneNumber(member.phoneNumber ?? "");
-      setHometaxLoginId(member.hometaxLoginId ?? "");
+      setHometaxLoginId(member.hometaxUserId ?? "");
       setBirthDate(member.birthDate ?? "");
       setRepresentName(member.representName ?? "");
     }
@@ -65,7 +65,7 @@ export function FilingInfoDrawer({
   const isValid =
     name.trim() !== "" &&
     phoneNumber.trim() !== "" &&
-    hometaxLoginId.trim() !== "" &&
+    hometaxUserId.trim() !== "" &&
     birthDate.trim().length === 8 &&
     representName.trim() !== "";
 
@@ -83,7 +83,7 @@ export function FilingInfoDrawer({
         body: JSON.stringify({
           name,
           phoneNumber,
-          hometaxLoginId,
+          hometaxUserId,
           birthDate,
           representName,
         }),
@@ -146,7 +146,7 @@ export function FilingInfoDrawer({
               </label>
               <input
                 type="text"
-                value={hometaxLoginId}
+                value={hometaxUserId}
                 onChange={(e) => setHometaxLoginId(e.target.value)}
                 placeholder="홈택스 로그인 아이디"
                 className="h-12 rounded-lg border border-black-40 px-3 text-sm text-black-100 outline-none focus:border-primary-100"

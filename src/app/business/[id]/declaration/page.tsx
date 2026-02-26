@@ -113,7 +113,7 @@ function WithholdingTaxContent() {
   const { data: member } = useQuery<{
     name: string;
     phoneNumber: string | null;
-    hometaxLoginId: string | null;
+    hometaxUserId: string | null;
     birthDate: string | null;
     representName: string | null;
   }>({
@@ -217,7 +217,7 @@ function WithholdingTaxContent() {
             submitDate: calcSubmitDate(year, month),
             userName: member?.name ?? "",
             phone: member?.phoneNumber ?? "",
-            hometaxUserId: member?.hometaxLoginId ?? "",
+            hometaxUserId: member?.hometaxUserId ?? "",
             birthDate: member?.birthDate ?? "",
             representName: member?.representName ?? "",
             recipients: earners.map((e) => ({

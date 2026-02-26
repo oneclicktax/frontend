@@ -19,7 +19,7 @@ interface MemberMe {
   name: string;
   phoneNumber: string | null;
   email: string | null;
-  hometaxLoginId: string | null;
+  hometaxUserId: string | null;
   birthDate: string | null;
   representName: string | null;
   socialLoginType: string;
@@ -31,7 +31,7 @@ export default function AccountPage() {
 
   const [name, setName] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [hometaxLoginId, setHometaxLoginId] = useState("");
+  const [hometaxUserId, setHometaxLoginId] = useState("");
   const [birthDate, setBirthDate] = useState("");
   const [representName, setRepresentName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,7 +66,7 @@ export default function AccountPage() {
     if (member) {
       setName(member.name ?? "");
       setPhoneNumber(member.phoneNumber ?? "");
-      setHometaxLoginId(member.hometaxLoginId ?? "");
+      setHometaxLoginId(member.hometaxUserId ?? "");
       setBirthDate(member.birthDate ?? "");
       setRepresentName(member.representName ?? "");
     }
@@ -83,7 +83,7 @@ export default function AccountPage() {
       const res = await fetchWithAuth(`${apiUrl}/api/members/me`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phoneNumber, hometaxLoginId, birthDate, representName }),
+        body: JSON.stringify({ name, phoneNumber, hometaxUserId, birthDate, representName }),
       });
       if (!res.ok) throw new Error();
       await queryClient.invalidateQueries({ queryKey: ["member", "me"] });
@@ -139,7 +139,7 @@ export default function AccountPage() {
           <label className="text-base font-bold text-black-100">홈택스 ID</label>
           <input
             type="text"
-            value={hometaxLoginId}
+            value={hometaxUserId}
             onChange={(e) => setHometaxLoginId(e.target.value)}
             maxLength={30}
             className="h-14 rounded border border-black-40 px-4 text-base text-black-100 outline-none"
