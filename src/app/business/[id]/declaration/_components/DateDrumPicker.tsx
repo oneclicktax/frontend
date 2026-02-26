@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { format } from "date-fns";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,12 +18,12 @@ import {
 } from "@/components/wheel-picker/wheel-picker";
 
 interface DateDrumPickerProps {
-  value: string; // "YYYY. MM. DD"
+  value: string; // ISO "YYYY-MM-DD"
   onChange: (value: string) => void;
 }
 
 function parseDate(value: string) {
-  const parts = value.split(".").map((s) => Number(s.trim()));
+  const parts = value.split("-").map((s) => Number(s.trim()));
   return {
     year: parts[0] || 2026,
     month: parts[1] || 1,
@@ -30,8 +31,12 @@ function parseDate(value: string) {
   };
 }
 
-function formatDate(year: number, month: number, day: number) {
-  return `${year}. ${String(month).padStart(2, "0")}. ${String(day).padStart(2, "0")}`;
+function formatDisplay(year: number, month: number, day: number) {
+  return format(new Date(year, month - 1, day), "yyyy. MM. dd");
+}
+
+function formatISO(year: number, month: number, day: number) {
+  return format(new Date(year, month - 1, day), "yyyy-MM-dd");
 }
 
 export function DateDrumPicker({ value, onChange }: DateDrumPickerProps) {
@@ -73,7 +78,7 @@ export function DateDrumPicker({ value, onChange }: DateDrumPickerProps) {
   };
 
   const handleConfirm = () => {
-    onChange(formatDate(draft.year, draft.month, draft.day));
+    onChange(formatISO(draft.year, draft.month, draft.day));
     setOpen(false);
   };
 
@@ -86,7 +91,7 @@ export function DateDrumPicker({ value, onChange }: DateDrumPickerProps) {
         className="w-full justify-between font-normal"
       >
         <span className="text-base text-black-100">
-          {formatDate(year, month, day)}
+          {formatDisplay(year, month, day)}
         </span>
         <ChevronDown size={20} className="text-black-60" />
       </Button>

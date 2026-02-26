@@ -9,6 +9,19 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { IncomeEarner, TaxCalculation } from "./types";
 
+// 제출일 계산: 귀속월 다음달 10일
+function calcSubmitDate(year: number, month: number): string {
+  const submitMonth = month === 12 ? 1 : month + 1;
+  const submitYear = month === 12 ? year + 1 : year;
+  return `${submitYear}-${String(submitMonth).padStart(2, "0")}-10`;
+}
+
+const STATUS_MESSAGES: Record<string, string> = {
+  PENDING: "신고 준비 중...",
+  AUTH_REQUESTED: "인증 확인 중...",
+  FILING: "신고 진행 중...",
+};
+
 function getDraftKey(businessId: number, year: number, month: number) {
   return `Oneclicktax.draft_${businessId}_${year}_${month}`;
 }
@@ -78,6 +91,8 @@ function WithholdingTaxContent() {
   const [step, setStep] = useState(1);
   const [earners, setEarners] = useState<IncomeEarner[]>([]);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filingJobId, setFilingJobId] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = loadDraft(draftKey);
@@ -96,9 +111,27 @@ function WithholdingTaxContent() {
     [draftKey],
   );
 
+  const { data: member } = useQuery<{
+    name: string;
+    phoneNumber: string | null;
+    hometaxLoginId: string | null;
+    birthDate: string | null;
+    representName: string | null;
+  }>({
+    queryKey: ["member", "me"],
+    queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      return json.data;
+    },
+  });
+
   const { data: business, isLoading } = useQuery<{
     name: string;
     bizNumber: string;
+    bizCode: string;
   }>({
     queryKey: ["business-detail", businessId],
     queryFn: async () => {
@@ -116,6 +149,7 @@ function WithholdingTaxContent() {
           /(\d{3})(\d{2})(\d{5})/,
           "$1 $2 $3",
         ),
+        bizCode: biz.bizCode || "",
       };
     },
   });
@@ -135,10 +169,80 @@ function WithholdingTaxContent() {
     }
   };
 
-  const handleSubmit = () => {
-    removeDraft(draftKey);
-    toast.success("원천세 신고가 완료되었습니다.");
-    router.push(`/business/${businessId}`);
+  // 폴링: 신고 작업 상태 조회
+  const { data: filingStatus } = useQuery<{ status: string }>({
+    queryKey: ["filing-status", businessId, filingJobId],
+    queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(
+        `${apiUrl}/api/companies/${businessId}/withholding-tax/filing/${filingJobId}/status`,
+      );
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!filingJobId,
+    refetchInterval: 2000,
+  });
+
+  useEffect(() => {
+    if (!filingStatus) return;
+
+    if (filingStatus.status === "COMPLETED") {
+      setFilingJobId(null);
+      setIsSubmitting(false);
+      removeDraft(draftKey);
+      toast.success("원천세 신고가 완료되었습니다.");
+      router.push(`/business/${businessId}`);
+    } else if (filingStatus.status === "FAILED") {
+      setFilingJobId(null);
+      setIsSubmitting(false);
+      toast.error("원천세 신고에 실패했습니다. 다시 시도해주세요.");
+    }
+  }, [filingStatus, draftKey, router, businessId]);
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(
+        `${apiUrl}/api/companies/${businessId}/withholding-tax/filing`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            year,
+            month,
+            submitDate: calcSubmitDate(year, month),
+            userName: member?.name ?? "",
+            phone: member?.phoneNumber ?? "",
+            hometaxUserId: member?.hometaxLoginId ?? "",
+            birthDate: member?.birthDate ?? "",
+            representName: member?.representName ?? "",
+            recipients: earners.map((e) => ({
+              name: e.name,
+              residentNumber: e.residentNumber,
+              phone: e.phone,
+              incomeType: e.incomeType,
+              paymentDate: e.paymentDate,
+              paymentAmount: e.amount,
+            })),
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error("신고 요청 실패");
+      }
+
+      const json = await res.json();
+      setFilingJobId(json.data.jobId);
+    } catch {
+      setIsSubmitting(false);
+      toast.error("신고 요청에 실패했습니다. 다시 시도해주세요.");
+    }
   };
 
   if (isLoading || !business || !draftLoaded) {
@@ -178,6 +282,7 @@ function WithholdingTaxContent() {
           <StepReview
             businessName={business.name}
             bizNumber={business.bizNumber}
+            bizCode={business.bizCode}
             earners={earners}
             taxCalculation={taxCalculation}
             onEdit={() => setStep(2)}
@@ -185,6 +290,18 @@ function WithholdingTaxContent() {
           />
         )}
       </div>
+
+      {/* 신고 진행 중 로딩 오버레이 */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <Loader2 size={48} className="animate-spin text-primary-100" />
+          <p className="mt-4 text-base font-medium text-black-100">
+            {filingStatus
+              ? (STATUS_MESSAGES[filingStatus.status] ?? "신고 진행 중...")
+              : "신고 요청 중..."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

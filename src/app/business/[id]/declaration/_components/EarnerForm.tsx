@@ -4,7 +4,8 @@ import { useState } from "react";
 import { ChevronDown, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { IncomeEarner, IncomeType } from "../types";
+import type { IncomeEarner } from "../types";
+import { INCOME_TYPE_OPTIONS } from "../types";
 import { DateDrumPicker } from "./DateDrumPicker";
 
 interface EarnerFormProps {
@@ -46,7 +47,7 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
   const [incomeTypeOpen, setIncomeTypeOpen] = useState(false);
   const [businessCodeOpen, setBusinessCodeOpen] = useState(false);
 
-  const incomeType = earner.incomeType || "기타소득";
+  const incomeType = earner.incomeType || "OTHER";
   const amountType = earner.amountType || "pre-tax";
 
   const update = (fields: Partial<IncomeEarner>) => {
@@ -58,7 +59,7 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
       {/* 소득자 이름 */}
       <div>
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-black-100">
+          <label className="text-base font-bold text-black-100">
             소득자 이름
           </label>
           <Button variant="outline" size="xs" onClick={onDelete}>
@@ -76,7 +77,7 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
 
       {/* 소득자 주민등록번호 */}
       <div>
-        <label className="text-sm font-medium text-black-100">
+        <label className="text-base font-bold text-black-100">
           소득자 주민등록번호
         </label>
         <Input
@@ -94,7 +95,7 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
 
       {/* 소득자 전화번호 */}
       <div>
-        <label className="text-sm font-medium text-black-100">
+        <label className="text-base font-bold text-black-100">
           소득자 전화번호
         </label>
         <Input
@@ -112,7 +113,7 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
       {/* 소득 지급 유형 */}
       <div>
         <div className="flex items-center gap-1">
-          <label className="text-sm font-medium text-black-100">
+          <label className="text-base font-bold text-black-100">
             소득 지급 유형
           </label>
           <Info size={16} className="text-primary-100" />
@@ -124,7 +125,9 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
             onClick={() => setIncomeTypeOpen(!incomeTypeOpen)}
             className="w-full justify-between font-normal"
           >
-            <span className="text-base text-black-100">{incomeType}</span>
+            <span className="text-base text-black-100">
+              {INCOME_TYPE_OPTIONS.find((o) => o.value === incomeType)?.label}
+            </span>
             <ChevronDown
               size={20}
               className={`text-black-60 transition-transform ${incomeTypeOpen ? "rotate-180" : ""}`}
@@ -132,27 +135,27 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
           </Button>
           {incomeTypeOpen && (
             <ul className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-black-20 bg-white shadow-lg">
-              {(["기타소득", "사업소득"] as IncomeType[]).map((type) => (
-                <li key={type}>
+              {INCOME_TYPE_OPTIONS.map((option) => (
+                <li key={option.value}>
                   <button
                     type="button"
                     onClick={() => {
                       update({
-                        incomeType: type,
+                        incomeType: option.value,
                         incomeCode:
-                          type === "기타소득"
+                          option.value === "OTHER"
                             ? INCOME_CODES_GITA[0].code
                             : "",
                       });
                       setIncomeTypeOpen(false);
                     }}
                     className={`w-full px-4 py-3 text-left text-base ${
-                      incomeType === type
+                      incomeType === option.value
                         ? "font-bold text-primary-100"
                         : "text-black-100"
                     }`}
                   >
-                    {type}
+                    {option.label}
                   </button>
                 </li>
               ))}
@@ -162,9 +165,9 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
       </div>
 
       {/* 소득구분코드 / 업종코드 */}
-      {incomeType === "기타소득" ? (
+      {incomeType === "OTHER" ? (
         <div>
-          <label className="text-sm font-medium text-black-100">
+          <label className="text-base font-bold text-black-100">
             소득구분코드
           </label>
           <Input
@@ -175,9 +178,12 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
         </div>
       ) : (
         <div>
-          <label className="text-sm font-medium text-black-100">
-            업종코드
-          </label>
+          <div className="flex items-center gap-1">
+            <label className="text-base font-bold text-black-100">
+              업종코드
+            </label>
+            <Info size={16} className="text-primary-100" />
+          </div>
           <div className="relative mt-2">
             <Button
               variant="outline"
@@ -224,10 +230,10 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
 
       {/* 지급 날짜 */}
       <div>
-        <label className="text-sm font-medium text-black-100">지급 날짜</label>
+        <label className="text-base font-bold text-black-100">지급 날짜</label>
         <div className="mt-2">
           <DateDrumPicker
-            value={earner.paymentDate || "2026. 01. 01"}
+            value={earner.paymentDate || "2026-01-01"}
             onChange={(date) => update({ paymentDate: date })}
           />
         </div>
@@ -235,21 +241,21 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
 
       {/* 소득자 지급액 */}
       <div>
-        <label className="text-sm font-medium text-black-100">
+        <label className="text-base font-bold text-black-100">
           소득자 지급액
         </label>
         <div className="mt-2 flex gap-2">
           <Button
             variant={amountType === "pre-tax" ? "default" : "outline"}
             onClick={() => update({ amountType: "pre-tax" })}
-            className="rounded-full"
+            className="rounded-lg"
           >
             세전금액
           </Button>
           <Button
             variant={amountType === "after-tax" ? "default" : "outline"}
             onClick={() => update({ amountType: "after-tax" })}
-            className="rounded-full"
+            className="rounded-lg"
           >
             세후금액
           </Button>

@@ -8,15 +8,23 @@ import { ReviewSection } from "./ReviewSection";
 interface StepReviewProps {
   businessName: string;
   bizNumber: string;
+  bizCode: string;
   earners: IncomeEarner[];
   taxCalculation: TaxCalculation;
   onEdit: () => void;
   onSubmit: () => void;
 }
 
+function calcEarnerTax(amount: number) {
+  const nationalTax = Math.round(amount * 0.03);
+  const localTax = Math.round(nationalTax * 0.1);
+  return { nationalTax, localTax };
+}
+
 export function StepReview({
   businessName,
   bizNumber,
+  bizCode,
   earners,
   taxCalculation,
   onEdit,
@@ -48,31 +56,57 @@ export function StepReview({
                 {bizNumber}
               </span>
             </div>
+            {bizCode && (
+              <div className="flex justify-between">
+                <span className="text-sm text-black-60">업종코드</span>
+                <span className="text-sm font-medium text-black-100">
+                  {bizCode}
+                </span>
+              </div>
+            )}
           </div>
         </ReviewSection>
 
         {/* 소득자 정보 */}
         <ReviewSection title="소득자 정보">
-          <div className="flex flex-col gap-3">
-            {earners.map((earner) => (
-              <div key={earner.id} className="flex flex-col gap-1">
-                <span className="text-sm font-medium text-black-100">
-                  {earner.name}
-                </span>
-                <div className="flex justify-between">
-                  <span className="text-xs text-black-60">소득 유형</span>
-                  <span className="text-xs text-black-100">
-                    {earner.incomeType}
-                  </span>
+          <div className="flex flex-col">
+            {earners.map((earner, index) => {
+              const { nationalTax, localTax } = calcEarnerTax(earner.amount);
+              return (
+                <div key={earner.id}>
+                  {index > 0 && (
+                    <div className="my-3 border-t border-black-20" />
+                  )}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium text-black-100">
+                      {earner.name}
+                    </span>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-black-60">세전 금액</span>
+                      <span className="text-xs text-black-100">
+                        {earner.amount.toLocaleString("ko-KR")}원
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-black-60">
+                        국세(원천세)
+                      </span>
+                      <span className="text-xs text-black-100">
+                        {nationalTax.toLocaleString("ko-KR")}원
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-xs text-black-60">
+                        지방세(원천세)
+                      </span>
+                      <span className="text-xs text-black-100">
+                        {localTax.toLocaleString("ko-KR")}원
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-black-60">지급액</span>
-                  <span className="text-xs text-black-100">
-                    {earner.amount.toLocaleString("ko-KR")}원
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ReviewSection>
 

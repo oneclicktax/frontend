@@ -38,10 +38,10 @@ type EditState =
 function getDefaultFormData(): Partial<IncomeEarner> {
   const now = new Date();
   return {
-    incomeType: "기타소득",
+    incomeType: "OTHER",
     incomeCode: "76",
     amountType: "pre-tax",
-    paymentDate: `${now.getFullYear()}. ${String(now.getMonth() + 1).padStart(2, "0")}. 01`,
+    paymentDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`,
   };
 }
 
@@ -51,7 +51,7 @@ function buildEarner(data: Partial<IncomeEarner>): IncomeEarner {
     name: data.name || "",
     residentNumber: data.residentNumber || "",
     phone: data.phone || "",
-    incomeType: data.incomeType || "기타소득",
+    incomeType: data.incomeType || "OTHER",
     incomeCode: data.incomeCode || "76",
     paymentDate: data.paymentDate || "",
     amountType: data.amountType || "pre-tax",
