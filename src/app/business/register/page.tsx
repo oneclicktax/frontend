@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, PlusCircle, XCircle, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -37,6 +39,7 @@ export default function BusinessRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [pendingBusiness, setPendingBusiness] = useState<Business | null>(null);
+  const [pendingName, setPendingName] = useState("");
 
   const MAX_BUSINESSES = 5;
 
@@ -86,6 +89,7 @@ export default function BusinessRegisterPage() {
         name: json.data.name,
         number: formatBusinessNumber(rawDigits),
       });
+      setPendingName(json.data.name);
       setDrawerOpen(true);
     } catch {
       toast.error("존재하지 않는 사업자등록번호입니다.");
@@ -96,8 +100,13 @@ export default function BusinessRegisterPage() {
 
   function handleConfirm() {
     if (!pendingBusiness) return;
-    setBusinesses((prev) => [...prev, pendingBusiness]);
+    const trimmed = pendingName.trim();
+    setBusinesses((prev) => [
+      ...prev,
+      { ...pendingBusiness, name: trimmed || pendingBusiness.name },
+    ]);
     setPendingBusiness(null);
+    setPendingName("");
     setDrawerOpen(false);
     setInput("");
   }
@@ -230,29 +239,37 @@ export default function BusinessRegisterPage() {
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerContent>
           <DrawerHeader>
-            <DrawerTitle>이 사업장 정보가 맞나요?</DrawerTitle>
+            <DrawerTitle>사업장 정보를 확인해주세요</DrawerTitle>
             {pendingBusiness && (
               <DrawerDescription>
-                {pendingBusiness.name}({pendingBusiness.number})
+                사업자등록번호: {pendingBusiness.number}
               </DrawerDescription>
             )}
           </DrawerHeader>
+          <div className="px-4">
+            <label className="block text-sm font-medium text-black-100">
+              상호명
+            </label>
+            <Input
+              value={pendingName}
+              onChange={(e) => setPendingName(e.target.value)}
+              className="mt-2"
+            />
+          </div>
           <DrawerFooter className="flex-row gap-3">
             <DrawerClose asChild>
-              <button
-                type="button"
-                className="flex-1 rounded-2xl border border-black-20 py-4 text-base font-bold text-black-80"
-              >
+              <Button variant="outline" size="xl" className="flex-1">
                 취소
-              </button>
+              </Button>
             </DrawerClose>
-            <button
-              type="button"
+            <Button
               onClick={handleConfirm}
-              className="flex-1 rounded-2xl bg-primary-100 py-4 text-base font-bold text-white"
+              disabled={!pendingName.trim()}
+              size="xl"
+              className="flex-1"
             >
               등록
-            </button>
+            </Button>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
