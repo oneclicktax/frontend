@@ -11,6 +11,7 @@ interface StepReviewProps {
   bizCode: string;
   earners: IncomeEarner[];
   taxCalculation: TaxCalculation;
+  isAmendment: boolean;
   onEdit: () => void;
   onSubmit: () => void;
 }
@@ -27,6 +28,7 @@ export function StepReview({
   bizCode,
   earners,
   taxCalculation,
+  isAmendment,
   onEdit,
   onSubmit,
 }: StepReviewProps) {
@@ -64,6 +66,12 @@ export function StepReview({
                 </span>
               </div>
             )}
+            <div className="flex justify-between">
+              <span className="text-sm text-black-60">신고 구분</span>
+              <span className={`text-sm font-medium ${isAmendment ? "text-primary-100" : "text-black-100"}`}>
+                {isAmendment ? "수정신고" : "정기신고"}
+              </span>
+            </div>
           </div>
         </ReviewSection>
 

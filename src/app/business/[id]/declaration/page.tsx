@@ -93,6 +93,7 @@ function WithholdingTaxContent() {
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filingJobId, setFilingJobId] = useState<string | null>(null);
+  const [isAmendment, setIsAmendment] = useState(false);
 
   useEffect(() => {
     const saved = loadDraft(draftKey);
@@ -216,6 +217,7 @@ function WithholdingTaxContent() {
             year,
             month,
             submitDate: calcSubmitDate(year, month),
+            amendedReturn: isAmendment,
             userName: member?.name ?? "",
             phone: member?.phoneNumber ?? "",
             hometaxUserId: member?.hometaxUserId ?? "",
@@ -265,6 +267,8 @@ function WithholdingTaxContent() {
             businessName={business.name}
             bizNumber={business.bizNumber}
             member={member}
+            isAmendment={isAmendment}
+            onAmendmentChange={setIsAmendment}
             onNext={() => setStep(2)}
           />
         )}
@@ -286,6 +290,7 @@ function WithholdingTaxContent() {
             bizCode={business.bizCode}
             earners={earners}
             taxCalculation={taxCalculation}
+            isAmendment={isAmendment}
             onEdit={() => setStep(2)}
             onSubmit={handleSubmit}
           />

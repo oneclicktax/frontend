@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 interface StepBusinessInfoProps {
   businessName: string;
@@ -13,6 +14,8 @@ interface StepBusinessInfoProps {
     birthDate: string | null;
     representName: string | null;
   };
+  isAmendment: boolean;
+  onAmendmentChange: (value: boolean) => void;
   onNext: () => void;
 }
 
@@ -20,6 +23,8 @@ export function StepBusinessInfo({
   businessName,
   bizNumber,
   member,
+  isAmendment,
+  onAmendmentChange,
   onNext,
 }: StepBusinessInfoProps) {
   return (
@@ -87,6 +92,14 @@ export function StepBusinessInfo({
             readOnly
             value={member?.hometaxUserId ?? ""}
             className="border-black-100 bg-black-20 font-bold tracking-wide"
+          />
+        </div>
+
+        <div className="flex items-center justify-between rounded-xl border border-black-20 bg-white px-4 py-3">
+          <span className="text-base font-bold text-black-100">수정신고</span>
+          <Switch
+            checked={isAmendment}
+            onCheckedChange={onAmendmentChange}
           />
         </div>
       </div>
