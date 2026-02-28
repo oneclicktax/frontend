@@ -38,7 +38,6 @@ export function FilingInfoDrawer({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [hometaxUserId, setHometaxLoginId] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [representName, setRepresentName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: member } = useQuery<MemberMe>({
@@ -54,11 +53,10 @@ export function FilingInfoDrawer({
 
   useEffect(() => {
     if (member) {
-      setName(member.name ?? "");
+      setName(member.representName ?? "");
       setPhoneNumber(member.phoneNumber ?? "");
       setHometaxLoginId(member.hometaxUserId ?? "");
       setBirthDate(member.birthDate ?? "");
-      setRepresentName(member.representName ?? "");
     }
   }, [member]);
 
@@ -66,8 +64,7 @@ export function FilingInfoDrawer({
     name.trim() !== "" &&
     phoneNumber.trim() !== "" &&
     hometaxUserId.trim() !== "" &&
-    birthDate.trim().length === 8 &&
-    representName.trim() !== "";
+    birthDate.trim().length === 8;
 
   async function handleSave() {
     if (!isValid) {
@@ -85,7 +82,7 @@ export function FilingInfoDrawer({
           phoneNumber,
           hometaxUserId,
           birthDate,
-          representName,
+          representName: name,
         }),
       });
       if (!res.ok) throw new Error();
@@ -169,18 +166,6 @@ export function FilingInfoDrawer({
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-black-100">
-                대표자명
-              </label>
-              <input
-                type="text"
-                value={representName}
-                onChange={(e) => setRepresentName(e.target.value)}
-                placeholder="대표자명을 입력해주세요"
-                className="h-12 rounded-lg border border-black-40 px-3 text-sm text-black-100 outline-none focus:border-primary-100"
-              />
-            </div>
           </div>
         </div>
 

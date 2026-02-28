@@ -37,6 +37,9 @@ export default function OnboardingPage() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pendingBizNumber, setPendingBizNumber] = useState("");
+  const [pendingName, setPendingName] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const rawDigits = input.replace(/\D/g, "");
   const isValidLength = rawDigits.length === 10;
@@ -57,17 +60,55 @@ export default function OnboardingPage() {
       );
       if (!res.ok) throw new Error();
       const json = await res.json();
-      setBusinesses((prev) => [
-        ...prev,
-        { name: json.data.name, bizNumber: formatBusinessNumber(rawDigits) },
-      ]);
-      setInput("");
-      setDrawerOpen(false);
+      setPendingBizNumber(formatBusinessNumber(rawDigits));
+      setPendingName(json.data.name);
+      setEditingIndex(null);
+      setDrawerOpen(true);
     } catch {
       toast.error("존재하지 않는 사업자등록번호입니다.");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleConfirm() {
+    const trimmed = pendingName.trim();
+    if (!trimmed) return;
+    if (editingIndex !== null) {
+      setBusinesses((prev) =>
+        prev.map((b, i) =>
+          i === editingIndex ? { ...b, name: trimmed } : b,
+        ),
+      );
+    } else {
+      setBusinesses((prev) => [
+        ...prev,
+        { name: trimmed, bizNumber: pendingBizNumber },
+      ]);
+      setInput("");
+    }
+    closeDrawer();
+  }
+
+  function handleDelete() {
+    if (editingIndex === null) return;
+    setBusinesses((prev) => prev.filter((_, i) => i !== editingIndex));
+    closeDrawer();
+  }
+
+  function closeDrawer() {
+    setPendingBizNumber("");
+    setPendingName("");
+    setEditingIndex(null);
+    setDrawerOpen(false);
+  }
+
+  function handleEditClick(index: number) {
+    const biz = businesses[index];
+    setPendingBizNumber(biz.bizNumber);
+    setPendingName(biz.name);
+    setEditingIndex(index);
+    setDrawerOpen(true);
   }
 
   async function handleSubmit() {
@@ -154,44 +195,51 @@ export default function OnboardingPage() {
         <div className="flex flex-1 flex-col px-6">
           <div className="mt-6">
             <h1 className="text-[22px] font-bold leading-[1.45] tracking-tight text-black-100">
-              사업장 정보를 입력해주세요
+              사업장 정보를 입력해주세요 ({businesses.length}/5)
             </h1>
           </div>
 
           <div className="mt-8 flex flex-col gap-3">
             {businesses.map((biz, index) => (
-              <div key={index} className="flex flex-col gap-2">
-                <label className="text-base font-bold text-black-100">
-                  사업장명
-                </label>
-                <Input
-                  readOnly
-                  value={`${biz.name}(${biz.bizNumber})`}
-                  className="border-primary-100 font-bold"
-                />
-                <label className="text-base font-bold text-black-100">
-                  사업자등록번호
-                </label>
-                <Input
-                  readOnly
-                  value={biz.bizNumber}
-                  className="border-primary-100 font-bold"
-                />
-              </div>
+              <Input
+                key={index}
+                readOnly
+                value={`${biz.bizNumber}(${biz.name})`}
+                className="cursor-pointer border-primary-100 font-bold"
+                onClick={() => handleEditClick(index)}
+              />
             ))}
 
-            <Button
-              variant="outline"
-              size="xl"
-              onClick={() => {
-                setInput("");
-                setDrawerOpen(true);
-              }}
-              className="w-full justify-between font-light"
-            >
-              <span>사업장 추가 등록</span>
-              <PlusCircle size={24} className="text-primary-100" />
-            </Button>
+            <div className="flex items-center gap-2 rounded-xl border border-black-20 px-4 py-3">
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="사업장 번호 입력"
+                value={input}
+                onChange={(e) =>
+                  setInput(formatBusinessNumber(e.target.value))
+                }
+                disabled={loading}
+                className="flex-1 text-base text-black-100 placeholder:text-black-40 outline-none disabled:bg-transparent"
+              />
+              <button
+                type="button"
+                onClick={handleSearch}
+                disabled={!isValidLength || loading}
+                aria-label="조회"
+              >
+                {loading ? (
+                  <Loader2 size={24} className="animate-spin text-primary-100" />
+                ) : (
+                  <PlusCircle
+                    size={24}
+                    className={
+                      isValidLength ? "text-primary-100" : "text-black-40"
+                    }
+                  />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="mt-auto pb-8 pt-8">
@@ -204,7 +252,7 @@ export default function OnboardingPage() {
               {submitting ? (
                 <Loader2 size={20} className="animate-spin" />
               ) : (
-                "확인"
+                "저장"
               )}
             </Button>
           </div>
@@ -215,33 +263,48 @@ export default function OnboardingPage() {
         <DrawerContent>
           <DrawerHeader>
             <DrawerTitle className="text-center">
-              사업자등록번호 입력
+              사업자 정보 확인
             </DrawerTitle>
           </DrawerHeader>
-          <div className="px-6 py-4">
-            <Input
-              type="text"
-              inputMode="numeric"
-              placeholder="숫자만 입력해주세요"
-              value={input}
-              onChange={(e) =>
-                setInput(formatBusinessNumber(e.target.value))
-              }
-              disabled={loading}
-            />
+          <div className="flex flex-col gap-4 px-6 py-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-black-100">
+                사업자등록번호
+              </label>
+              <Input
+                value={pendingBizNumber}
+                disabled
+                className="border-black-20 bg-black-20 font-bold"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium text-black-100">
+                상호명
+              </label>
+              <Input
+                value={pendingName}
+                onChange={(e) => setPendingName(e.target.value)}
+              />
+            </div>
           </div>
-          <DrawerFooter>
+          <DrawerFooter className={editingIndex !== null ? "flex-row gap-3" : ""}>
+            {editingIndex !== null && (
+              <Button
+                variant="outline"
+                size="xl"
+                className="flex-1"
+                onClick={handleDelete}
+              >
+                삭제
+              </Button>
+            )}
             <Button
               size="xl"
-              className="w-full"
-              disabled={!isValidLength || loading}
-              onClick={handleSearch}
+              className={editingIndex !== null ? "flex-1" : "w-full"}
+              disabled={!pendingName.trim()}
+              onClick={handleConfirm}
             >
-              {loading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                "조회"
-              )}
+              {editingIndex !== null ? "저장" : "등록"}
             </Button>
           </DrawerFooter>
         </DrawerContent>
