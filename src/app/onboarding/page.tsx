@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -49,7 +49,7 @@ interface ReporterForm {
 
 type OnboardingStep = 1 | 2;
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -433,5 +433,19 @@ export default function OnboardingPage() {
       )}
 
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center">
+          <Loader2 size={32} className="animate-spin text-primary-100" />
+        </div>
+      }
+    >
+      <OnboardingContent />
+    </Suspense>
   );
 }
