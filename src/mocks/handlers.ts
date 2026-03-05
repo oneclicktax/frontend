@@ -64,6 +64,35 @@ export const handlers = [
     });
   }),
 
+  // 회원 정보 조회 (members/me)
+  http.get("/api/members/me", () => {
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        name: "홍길동",
+        phoneNumber: "01012341234",
+        email: "hong@test.com",
+        hometaxUserId: "testuser",
+        birthDate: "19970101",
+        representName: "홍길동",
+        termsAgreed: true,
+        socialLoginType: "KAKAO",
+      },
+    });
+  }),
+
+  // 회원 정보 수정 (members/me)
+  http.patch("/api/members/me", async () => {
+    await delay(300);
+    return HttpResponse.json({
+      data: {
+        id: 1,
+        name: "홍길동",
+        termsAgreed: true,
+      },
+    });
+  }),
+
   // 알림 내역 조회
   http.get("/api/notifications", async () => {
     await delay(300);

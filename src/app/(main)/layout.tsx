@@ -1,4 +1,5 @@
 import { BottomNav } from "@/components/BottomNav";
+import { OnboardingGuard } from "@/components/OnboardingGuard";
 
 export default function MainLayout({
   children,
@@ -6,9 +7,11 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-dvh pb-14">
-      {children}
-      <BottomNav />
-    </div>
+    <OnboardingGuard>
+      <div className="min-h-dvh pb-14">
+        {children}
+        <BottomNav />
+      </div>
+    </OnboardingGuard>
   );
 }

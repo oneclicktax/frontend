@@ -21,11 +21,28 @@ export default function LoginSuccessPage() {
     setAccessToken(token);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-    fetchWithAuth(`${apiUrl}/api/companies`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((json) => {
-        const hasBusinesses = (json.data ?? []).length > 0;
-        router.replace(hasBusinesses ? "/home" : "/onboarding");
+
+    Promise.all([
+      fetchWithAuth(`${apiUrl}/api/members/me`).then((r) =>
+        r.ok ? r.json() : Promise.reject(),
+      ),
+      fetchWithAuth(`${apiUrl}/api/companies`).then((r) =>
+        r.ok ? r.json() : Promise.reject(),
+      ),
+    ])
+      .then(([memberJson, companiesJson]) => {
+        const member = memberJson.data;
+        const hasCompanies = (companiesJson.data ?? []).length > 0;
+
+        if (!member?.termsAgreed) {
+          // 약관 미동의 → 온보딩 1단계부터
+          router.replace("/onboarding");
+        } else if (!hasCompanies) {
+          // 약관 동의했지만 사업장 없음 → 온보딩 2단계부터
+          router.replace("/onboarding?step=2");
+        } else {
+          router.replace("/home");
+        }
       })
       .catch(() => {
         router.replace("/onboarding");
