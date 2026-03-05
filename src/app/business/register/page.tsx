@@ -32,6 +32,7 @@ export default function BusinessRegisterPage() {
       if (!res.ok) throw new Error();
       const json = await res.json();
       return (json.data ?? []).map((b: any) => ({
+        id: b.id,
         name: b.name,
         bizNumber: formatBusinessNumber(b.bizNumber),
       }));

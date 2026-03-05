@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/drawer";
 
 export interface Business {
+  id?: number;
   name: string;
   bizNumber: string;
 }
@@ -73,7 +74,7 @@ export function BusinessRegisterForm({
       if (!res.ok) throw new Error();
       const json = await res.json();
       setPendingBizNumber(formatBusinessNumber(rawDigits));
-      setPendingName(json.data.name);
+      setPendingName(json.data.name ?? "");
       setEditingIndex(null);
       setDrawerOpen(true);
     } catch {

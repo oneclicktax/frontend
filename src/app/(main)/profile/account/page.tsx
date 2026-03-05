@@ -11,7 +11,7 @@ import { toast } from "sonner";
 interface Business {
   id: number;
   name: string;
-  number: string;
+  bizNumber: string;
 }
 
 interface MemberMe {
@@ -21,7 +21,6 @@ interface MemberMe {
   email: string | null;
   hometaxUserId: string | null;
   birthDate: string | null;
-  representName: string | null;
   socialLoginType: string;
 }
 
@@ -33,7 +32,7 @@ export default function AccountPage() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [hometaxUserId, setHometaxLoginId] = useState("");
   const [birthDate, setBirthDate] = useState("");
-  const [representName, setRepresentName] = useState("");
+  const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: member } = useQuery<MemberMe>({
@@ -57,7 +56,7 @@ export default function AccountPage() {
       return (json.data ?? []).map((b: any) => ({
         id: b.id,
         name: b.name,
-        number: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
+        bizNumber: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
       }));
     },
   });
@@ -68,7 +67,7 @@ export default function AccountPage() {
       setPhoneNumber(member.phoneNumber ?? "");
       setHometaxLoginId(member.hometaxUserId ?? "");
       setBirthDate(member.birthDate ?? "");
-      setRepresentName(member.representName ?? "");
+      setEmail(member.email ?? "");
     }
   }, [member]);
 
@@ -83,7 +82,7 @@ export default function AccountPage() {
       const res = await fetchWithAuth(`${apiUrl}/api/members/me`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phoneNumber, hometaxUserId, birthDate, representName }),
+        body: JSON.stringify({ name, phoneNumber, hometaxUserId, birthDate, email }),
       });
       if (!res.ok) throw new Error();
       await queryClient.invalidateQueries({ queryKey: ["member", "me"] });
@@ -161,26 +160,14 @@ export default function AccountPage() {
           />
         </div>
 
-        {/* 대표자명 */}
-        <div className="flex flex-col gap-2">
-          <label className="text-base font-bold text-black-100">대표자명</label>
-          <input
-            type="text"
-            value={representName}
-            onChange={(e) => setRepresentName(e.target.value)}
-            placeholder="대표자명을 입력해주세요"
-            className="h-14 rounded border border-black-40 px-4 text-base text-black-100 outline-none"
-          />
-        </div>
-
         {/* 이메일 */}
         <div className="flex flex-col gap-2">
           <label className="text-base font-bold text-black-100">이메일</label>
           <input
             type="email"
-            value={member?.email ? `${member.email}(${member.socialLoginType === "KAKAO" ? "카카오" : member.socialLoginType} 연결)` : ""}
-            readOnly
-            className="h-14 rounded border border-black-40 bg-gray-50 px-4 text-base text-black-60 outline-none"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="h-14 rounded border border-black-40 px-4 text-base text-black-100 outline-none"
           />
         </div>
 
@@ -195,7 +182,7 @@ export default function AccountPage() {
               className="flex h-14 items-center justify-between rounded border border-black-40 px-4"
             >
               <span className="text-base text-black-100">
-                {biz.name}({biz.number})
+                {biz.name}({biz.bizNumber})
               </span>
               <ChevronRight size={20} className="text-black-60" />
             </button>

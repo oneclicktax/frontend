@@ -8,7 +8,7 @@ import { fetchWithAuth } from "@/lib/api";
 interface Business {
   id: number;
   name: string;
-  number: string;
+  bizNumber: string;
 }
 
 export default function HomePage() {
@@ -22,7 +22,7 @@ export default function HomePage() {
       return (json.data ?? []).map((b: any) => ({
         id: b.id,
         name: b.name,
-        number: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
+        bizNumber: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
       }));
     },
   });
@@ -62,7 +62,7 @@ export default function HomePage() {
               >
                 <div>
                   <p className="text-sm font-bold text-white">{biz.name}</p>
-                  <p className="mt-1 text-xs text-white/80">{biz.number}</p>
+                  <p className="mt-1 text-xs text-white/80">{biz.bizNumber}</p>
                 </div>
                 <ChevronRight size={20} className="self-end text-white" />
               </Link>

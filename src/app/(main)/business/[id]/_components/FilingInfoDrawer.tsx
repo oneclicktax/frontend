@@ -18,7 +18,6 @@ interface MemberMe {
   phoneNumber: string | null;
   hometaxUserId: string | null;
   birthDate: string | null;
-  representName: string | null;
 }
 
 interface FilingInfoDrawerProps {
@@ -53,7 +52,7 @@ export function FilingInfoDrawer({
 
   useEffect(() => {
     if (member) {
-      setName(member.representName ?? "");
+      setName(member.name ?? "");
       setPhoneNumber(member.phoneNumber ?? "");
       setHometaxLoginId(member.hometaxUserId ?? "");
       setBirthDate(member.birthDate ?? "");
@@ -82,7 +81,6 @@ export function FilingInfoDrawer({
           phoneNumber,
           hometaxUserId,
           birthDate,
-          representName: name,
         }),
       });
       if (!res.ok) throw new Error();

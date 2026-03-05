@@ -42,7 +42,7 @@ type MonthStatusType = "default" | "completed" | "locked" | "error";
 interface Business {
   id: number;
   name: string;
-  number: string;
+  bizNumber: string;
 }
 
 interface MemberMe {
@@ -50,7 +50,6 @@ interface MemberMe {
   phoneNumber: string | null;
   hometaxUserId: string | null;
   birthDate: string | null;
-  representName: string | null;
 }
 
 function isMemberInfoComplete(member: MemberMe | undefined): boolean {
@@ -59,8 +58,7 @@ function isMemberInfoComplete(member: MemberMe | undefined): boolean {
     !!member.name?.trim() &&
     !!member.phoneNumber?.trim() &&
     !!member.hometaxUserId?.trim() &&
-    !!member.birthDate?.trim() &&
-    !!member.representName?.trim()
+    !!member.birthDate?.trim()
   );
 }
 
@@ -205,7 +203,7 @@ function BusinessDetailContent() {
       return (json.data ?? []).map((b: any) => ({
         id: b.id,
         name: b.name,
-        number: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
+        bizNumber: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
       }));
     },
   });

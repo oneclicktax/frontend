@@ -116,7 +116,6 @@ function WithholdingTaxContent() {
     phoneNumber: string | null;
     hometaxUserId: string | null;
     birthDate: string | null;
-    representName: string | null;
   }>({
     queryKey: ["member", "me"],
     queryFn: async () => {
@@ -222,7 +221,7 @@ function WithholdingTaxContent() {
             phone: member?.phoneNumber ?? "",
             hometaxUserId: member?.hometaxUserId ?? "",
             birthDate: member?.birthDate ?? "",
-            representName: member?.representName ?? "",
+            representName: member?.name ?? "",
             recipients: earners.map((e) => ({
               name: e.name,
               residentNumber: e.residentNumber,
@@ -266,9 +265,6 @@ function WithholdingTaxContent() {
           <StepBusinessInfo
             businessName={business.name}
             bizNumber={business.bizNumber}
-            member={member}
-            isAmendment={isAmendment}
-            onAmendmentChange={setIsAmendment}
             onNext={() => setStep(2)}
           />
         )}
