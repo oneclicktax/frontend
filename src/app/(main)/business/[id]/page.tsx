@@ -164,6 +164,13 @@ function InfoBanner({ status }: { status: TaxStatus }) {
   return null;
 }
 
+function getBelongPeriod(year: number, month: number) {
+  // 조회월(month)에서 귀속월 계산: 3월 조회 → 2월 귀속
+  const belongMonth = month === 1 ? 12 : month - 1;
+  const belongYear = month === 1 ? year - 1 : year;
+  return { year: belongYear, month: belongMonth };
+}
+
 function BusinessDetailContent() {
   const router = useRouter();
   const params = useParams();
@@ -382,12 +389,13 @@ function BusinessDetailContent() {
                     setDrawerOpen(true);
                     return;
                   }
-                  if (hasDraft(businessId, selected.year, selected.month)) {
+                  const belong = getBelongPeriod(selected.year, selected.month);
+                  if (hasDraft(businessId, belong.year, belong.month)) {
                     setDraftDrawerOpen(true);
                     return;
                   }
                   router.push(
-                    `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule.status === "overdue" ? "&overdue=true" : ""}`,
+                    `/business/${businessId}/declaration?year=${belong.year}&month=${belong.month}${schedule.status === "overdue" ? "&overdue=true" : ""}`,
                   );
                 }
               }}
@@ -442,12 +450,13 @@ function BusinessDetailContent() {
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
         onComplete={() => {
-          if (hasDraft(businessId, selected.year, selected.month)) {
+          const belong = getBelongPeriod(selected.year, selected.month);
+          if (hasDraft(businessId, belong.year, belong.month)) {
             setDraftDrawerOpen(true);
             return;
           }
           router.push(
-            `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
+            `/business/${businessId}/declaration?year=${belong.year}&month=${belong.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
           );
         }}
       />
@@ -456,16 +465,18 @@ function BusinessDetailContent() {
         open={draftDrawerOpen}
         onOpenChange={setDraftDrawerOpen}
         onContinue={() => {
+          const belong = getBelongPeriod(selected.year, selected.month);
           setDraftDrawerOpen(false);
           router.push(
-            `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
+            `/business/${businessId}/declaration?year=${belong.year}&month=${belong.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
           );
         }}
         onDiscard={() => {
-          localStorage.removeItem(getDraftKey(businessId, selected.year, selected.month));
+          const belong = getBelongPeriod(selected.year, selected.month);
+          localStorage.removeItem(getDraftKey(businessId, belong.year, belong.month));
           setDraftDrawerOpen(false);
           router.push(
-            `/business/${businessId}/declaration?year=${selected.year}&month=${selected.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
+            `/business/${businessId}/declaration?year=${belong.year}&month=${belong.month}${schedule?.status === "overdue" ? "&overdue=true" : ""}`,
           );
         }}
       />
