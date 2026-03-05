@@ -278,6 +278,8 @@ function WithholdingTaxContent() {
             earners={earners}
             onEarnersChange={handleEarnersChange}
             onNext={() => setStep(3)}
+            belongYear={year}
+            belongMonth={month}
           />
         )}
 

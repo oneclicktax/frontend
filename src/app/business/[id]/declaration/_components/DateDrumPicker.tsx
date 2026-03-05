@@ -20,6 +20,9 @@ import {
 interface DateDrumPickerProps {
   value: string; // ISO "YYYY-MM-DD"
   onChange: (value: string) => void;
+  /** 년/월을 고정하여 해당 월의 일자만 선택 가능하게 함 */
+  fixedYear?: number;
+  fixedMonth?: number;
 }
 
 function parseDate(value: string) {
@@ -39,27 +42,31 @@ function formatISO(year: number, month: number, day: number) {
   return format(new Date(year, month - 1, day), "yyyy-MM-dd");
 }
 
-export function DateDrumPicker({ value, onChange }: DateDrumPickerProps) {
+export function DateDrumPicker({ value, onChange, fixedYear, fixedMonth }: DateDrumPickerProps) {
   const [open, setOpen] = useState(false);
   const { year, month, day } = parseDate(value);
   const [draft, setDraft] = useState({ year, month, day });
 
   const yearOptions: WheelPickerOption<number>[] = useMemo(
     () =>
-      Array.from({ length: 5 }, (_, i) => ({
-        label: String(2024 + i),
-        value: 2024 + i,
-      })),
-    [],
+      fixedYear != null
+        ? [{ label: String(fixedYear), value: fixedYear }]
+        : Array.from({ length: 5 }, (_, i) => ({
+            label: String(2024 + i),
+            value: 2024 + i,
+          })),
+    [fixedYear],
   );
 
   const monthOptions: WheelPickerOption<number>[] = useMemo(
     () =>
-      Array.from({ length: 12 }, (_, i) => ({
-        label: String(i + 1).padStart(2, "0"),
-        value: i + 1,
-      })),
-    [],
+      fixedMonth != null
+        ? [{ label: String(fixedMonth).padStart(2, "0"), value: fixedMonth }]
+        : Array.from({ length: 12 }, (_, i) => ({
+            label: String(i + 1).padStart(2, "0"),
+            value: i + 1,
+          })),
+    [fixedMonth],
   );
 
   const draftDaysInMonth = new Date(draft.year, draft.month, 0).getDate();

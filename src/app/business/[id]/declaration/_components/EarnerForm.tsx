@@ -12,6 +12,10 @@ interface EarnerFormProps {
   earner: Partial<IncomeEarner>;
   onChange: (earner: Partial<IncomeEarner>) => void;
   onDelete: () => void;
+  /** 귀속 년도 (지급날짜를 해당 월로 제한) */
+  belongYear: number;
+  /** 귀속 월 (지급날짜를 해당 월로 제한) */
+  belongMonth: number;
 }
 
 const INCOME_CODES_GITA = [
@@ -43,7 +47,7 @@ function formatAmount(value: number): string {
   return value.toLocaleString("ko-KR");
 }
 
-export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
+export function EarnerForm({ earner, onChange, onDelete, belongYear, belongMonth }: EarnerFormProps) {
   const [incomeTypeOpen, setIncomeTypeOpen] = useState(false);
   const [businessCodeOpen, setBusinessCodeOpen] = useState(false);
 
@@ -233,8 +237,10 @@ export function EarnerForm({ earner, onChange, onDelete }: EarnerFormProps) {
         <label className="text-base font-bold text-black-100">지급 날짜</label>
         <div className="mt-2">
           <DateDrumPicker
-            value={earner.paymentDate || "2026-01-01"}
+            value={earner.paymentDate || `${belongYear}-${String(belongMonth).padStart(2, "0")}-01`}
             onChange={(date) => update({ paymentDate: date })}
+            fixedYear={belongYear}
+            fixedMonth={belongMonth}
           />
         </div>
       </div>

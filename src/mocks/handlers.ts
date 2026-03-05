@@ -3,36 +3,33 @@ import { businesses, getSchedule, getMonthStatuses } from "./businesses";
 
 interface MockDocument {
   id: number;
-  name: string;
-  category: "지급대장" | "원천세" | "지급명세서";
-  month: number;
+  documentType: string;
+  documentName: string;
+  createdAt: string;
+  belongYearMonth: string;
 }
 
 const documentsByBusiness: Record<number, MockDocument[]> = {
   1: [
-    // 1월
-    { id: 1, name: "1월 국세 접수증", category: "원천세", month: 1 },
-    { id: 2, name: "1월 지방세 접수증", category: "원천세", month: 1 },
-    { id: 3, name: "1월 국세 납부서", category: "원천세", month: 1 },
-    { id: 4, name: "1월 지방세 납부서", category: "원천세", month: 1 },
-    { id: 5, name: "1월 원천징수이행 상황신고서", category: "원천세", month: 1 },
-    { id: 6, name: "1월 간이지급명세서", category: "지급명세서", month: 1 },
-    { id: 7, name: "1월 지급대장", category: "지급대장", month: 1 },
-    { id: 8, name: "1월 소수진 지급내역서", category: "지급대장", month: 1 },
-    { id: 9, name: "1월 홍길동 지급내역서", category: "지급대장", month: 1 },
-    // 2월
-    { id: 10, name: "2월 간이지급명세서", category: "지급명세서", month: 2 },
-    { id: 11, name: "2월 국세 접수증", category: "원천세", month: 2 },
-    { id: 12, name: "2월 지방세 접수증", category: "원천세", month: 2 },
-    { id: 13, name: "2월 지급대장", category: "지급대장", month: 2 },
-    // 3월
-    { id: 14, name: "3월 간이지급명세서", category: "지급명세서", month: 3 },
+    // 1월 (202601)
+    { id: 1, documentType: "NATIONAL_TAX_RECEIPT", documentName: "1월 국세 접수증", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 2, documentType: "LOCAL_TAX_RECEIPT", documentName: "1월 지방세 접수증", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 3, documentType: "NATIONAL_TAX_PAYMENT", documentName: "1월 국세 납부서", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 4, documentType: "LOCAL_TAX_PAYMENT", documentName: "1월 지방세 납부서", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 5, documentType: "WITHHOLDING_TAX_REPORT", documentName: "1월 원천징수이행 상황신고서", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 6, documentType: "SIMPLE_PAYMENT_STATEMENT", documentName: "1월 간이지급명세서", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 7, documentType: "PAYMENT_LEDGER", documentName: "1월 지급대장", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    // 2월 (202602)
+    { id: 10, documentType: "SIMPLE_PAYMENT_STATEMENT", documentName: "2월 간이지급명세서", createdAt: "2026-03-10T10:00:00", belongYearMonth: "202602" },
+    { id: 11, documentType: "NATIONAL_TAX_RECEIPT", documentName: "2월 국세 접수증", createdAt: "2026-03-10T10:00:00", belongYearMonth: "202602" },
+    { id: 12, documentType: "LOCAL_TAX_RECEIPT", documentName: "2월 지방세 접수증", createdAt: "2026-03-10T10:00:00", belongYearMonth: "202602" },
+    { id: 13, documentType: "PAYMENT_LEDGER", documentName: "2월 지급대장", createdAt: "2026-03-10T10:00:00", belongYearMonth: "202602" },
   ],
   2: [
-    { id: 15, name: "1월 국세 접수증", category: "원천세", month: 1 },
-    { id: 16, name: "1월 지방세 접수증", category: "원천세", month: 1 },
-    { id: 17, name: "1월 간이지급명세서", category: "지급명세서", month: 1 },
-    { id: 18, name: "1월 지급대장", category: "지급대장", month: 1 },
+    { id: 15, documentType: "NATIONAL_TAX_RECEIPT", documentName: "1월 국세 접수증", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 16, documentType: "LOCAL_TAX_RECEIPT", documentName: "1월 지방세 접수증", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 17, documentType: "SIMPLE_PAYMENT_STATEMENT", documentName: "1월 간이지급명세서", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
+    { id: 18, documentType: "PAYMENT_LEDGER", documentName: "1월 지급대장", createdAt: "2026-02-10T10:00:00", belongYearMonth: "202601" },
   ],
 };
 
@@ -126,20 +123,39 @@ export const handlers = [
     return HttpResponse.json(getMonthStatuses(id));
   }),
 
-  // 사업장 문서 목록 조회
-  http.get("/api/business/:id/documents", async ({ params }) => {
+  // 사업장 문서 목록 조회 (새 API)
+  http.get("/api/companies/:id/withholding-tax/documents", async ({ params, request }) => {
     await delay(300);
 
     const id = Number(params.id);
-    const docs = documentsByBusiness[id];
-    if (!docs) {
+    const url = new URL(request.url);
+    const belongYearMonth = url.searchParams.get("belongYearMonth");
+
+    const allDocs = documentsByBusiness[id];
+    if (!allDocs) {
       return HttpResponse.json(
-        { message: "사업장을 찾을 수 없습니다." },
-        { status: 404 }
+        { data: { documents: [] } }
       );
     }
 
-    return HttpResponse.json(docs);
+    const filtered = belongYearMonth
+      ? allDocs.filter((d) => d.belongYearMonth === belongYearMonth)
+      : allDocs;
+
+    return HttpResponse.json({
+      data: { documents: filtered },
+    });
+  }),
+
+  // 문서 PDF 다운로드 (mock - 빈 PDF 반환)
+  http.get("/api/companies/:companyId/withholding-tax/documents/:docId/download", async () => {
+    await delay(200);
+    return new HttpResponse(new Blob(["mock-pdf-content"], { type: "application/pdf" }), {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": "attachment; filename=\"document.pdf\"",
+      },
+    });
   }),
 
   // 사업장 신고 일정 조회

@@ -6,6 +6,7 @@ import { Bell, Settings, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchWithAuth } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   Drawer,
   DrawerContent,
@@ -26,11 +27,11 @@ interface Business {
   number: string;
 }
 
-interface Document {
+interface DocumentItem {
   id: number;
-  name: string;
-  category: string;
-  month: number;
+  documentType: string;
+  documentName: string;
+  createdAt: string;
 }
 
 type Category = "전체" | "신고내역" | "원천세" | "지급명세서";
@@ -39,9 +40,15 @@ const categories: Category[] = ["전체", "신고내역", "원천세", "지급�
 
 const categoryDocTypes: Record<Category, string[] | null> = {
   전체: null,
-  신고내역: ["지급대장", "지급내역서"],
-  원천세: ["국세 접수증", "국세 납부서", "지방세 접수증", "지방세 납부서", "원천징수이행 상황신고서"],
-  지급명세서: ["간이지급명세서"],
+  신고내역: ["PAYMENT_LEDGER"],
+  원천세: [
+    "NATIONAL_TAX_RECEIPT",
+    "LOCAL_TAX_RECEIPT",
+    "NATIONAL_TAX_PAYMENT",
+    "LOCAL_TAX_PAYMENT",
+    "WITHHOLDING_TAX_REPORT",
+  ],
+  지급명세서: ["SIMPLE_PAYMENT_STATEMENT"],
 };
 
 export default function DocumentsPage() {
@@ -75,25 +82,32 @@ export default function DocumentsPage() {
   });
 
   const businessId = selectedBusinessId ?? businesses[0]?.id;
-
-  const { data: documents = [] } = useQuery<Document[]>({
-    queryKey: ["documents", businessId],
-    queryFn: async () => {
-      const res = await fetchWithAuth(`/api/business/${businessId}/documents`);
-      if (!res.ok) throw new Error();
-      return res.json();
-    },
-    enabled: !!businessId,
-  });
-
   const selectedBusiness = businesses.find((b) => b.id === businessId);
+
+  const belongYearMonth =
+    selectedYear !== null && selectedMonth !== null
+      ? `${selectedYear}${String(selectedMonth).padStart(2, "0")}`
+      : null;
+
+  const { data: documents = [] } = useQuery<DocumentItem[]>({
+    queryKey: ["documents", businessId, belongYearMonth],
+    queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(
+        `${apiUrl}/api/companies/${businessId}/withholding-tax/documents?belongYearMonth=${belongYearMonth}`,
+      );
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      return json.data?.documents ?? [];
+    },
+    enabled: !!businessId && !!belongYearMonth,
+  });
 
   const filtered = documents.filter((doc) => {
     const docTypes = categoryDocTypes[selectedCategory];
-    if (docTypes && !docTypes.some((type) => doc.name.includes(type))) {
+    if (docTypes && !docTypes.includes(doc.documentType)) {
       return false;
     }
-    if (selectedMonth !== null && doc.month !== selectedMonth) return false;
     return true;
   });
 
@@ -125,6 +139,25 @@ export default function DocumentsPage() {
     setSelectedYear(draftYear);
     setSelectedMonth(draftMonth);
     setDateDrawerOpen(false);
+  };
+
+  const handleDownload = async (doc: DocumentItem) => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(
+        `${apiUrl}/api/companies/${businessId}/withholding-tax/documents/${doc.id}/download`,
+      );
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${doc.documentName}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("다운로드에 실패했습니다.");
+    }
   };
 
   const dateLabel =
@@ -215,14 +248,12 @@ export default function DocumentsPage() {
               className="flex items-center justify-between border-b border-black-20 pb-3"
             >
               <span className="text-base font-medium text-black-100">
-                {doc.name}
+                {doc.documentName}
               </span>
               <button
                 type="button"
                 className="shrink-0 text-base font-medium text-[#3629b7] underline"
-                onClick={() => {
-                  // TODO: 다운로드 처리
-                }}
+                onClick={() => handleDownload(doc)}
               >
                 다운
               </button>
@@ -230,7 +261,9 @@ export default function DocumentsPage() {
           ))}
           {filtered.length === 0 && (
             <li className="py-8 text-center text-sm text-black-60">
-              해당 조건의 문서가 없습니다.
+              {belongYearMonth
+                ? "해당 조건의 문서가 없습니다."
+                : "월을 선택해주세요."}
             </li>
           )}
         </ul>

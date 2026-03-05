@@ -11,6 +11,8 @@ interface StepEarnerInfoProps {
   earners: IncomeEarner[];
   onEarnersChange: (earners: IncomeEarner[]) => void;
   onNext: () => void;
+  belongYear: number;
+  belongMonth: number;
 }
 
 const ORDER_LABELS = [
@@ -35,13 +37,12 @@ type EditState =
   | { type: "new"; data: Partial<IncomeEarner> }
   | { type: "edit"; index: number; data: Partial<IncomeEarner> };
 
-function getDefaultFormData(): Partial<IncomeEarner> {
-  const now = new Date();
+function getDefaultFormData(belongYear: number, belongMonth: number): Partial<IncomeEarner> {
   return {
     incomeType: "OTHER",
     incomeCode: "76",
     amountType: "pre-tax",
-    paymentDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`,
+    paymentDate: `${belongYear}-${String(belongMonth).padStart(2, "0")}-01`,
   };
 }
 
@@ -63,6 +64,8 @@ export function StepEarnerInfo({
   earners,
   onEarnersChange,
   onNext,
+  belongYear,
+  belongMonth,
 }: StepEarnerInfoProps) {
   const [editState, setEditState] = useState<EditState>({ type: "idle" });
 
@@ -87,7 +90,7 @@ export function StepEarnerInfo({
     );
 
   const handleAdd = () => {
-    setEditState({ type: "new", data: getDefaultFormData() });
+    setEditState({ type: "new", data: getDefaultFormData(belongYear, belongMonth) });
   };
 
   const handleSaveAndAdd = () => {
@@ -101,7 +104,7 @@ export function StepEarnerInfo({
       newEarners[editState.index] = earner;
     }
     onEarnersChange(newEarners);
-    setEditState({ type: "new", data: getDefaultFormData() });
+    setEditState({ type: "new", data: getDefaultFormData(belongYear, belongMonth) });
   };
 
   const handleDelete = () => {
@@ -173,6 +176,8 @@ export function StepEarnerInfo({
               )
             }
             onDelete={handleDelete}
+            belongYear={belongYear}
+            belongMonth={belongMonth}
           />
         )}
 
