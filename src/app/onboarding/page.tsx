@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronRight, Loader2, X } from "lucide-react";
+import { ArrowLeft, Check, ChevronRight, Loader2, X, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,12 +42,18 @@ interface ReporterForm {
   name: string;
   birthDate: string;
   phone: string;
-  hometaxId: string;
   termsService: boolean;
   termsPrivacy: boolean;
 }
 
-type OnboardingStep = 1 | 2;
+interface HometaxBusiness {
+  name: string;
+  bizNumber: string;
+  openDate: string;
+  status: string;
+}
+
+type OnboardingStep = 1 | 2 | 3;
 
 function OnboardingContent() {
   const router = useRouter();
@@ -77,14 +83,13 @@ function OnboardingContent() {
 
   // 약관 동의 완료 시 즉시 2단계로 설정 (useEffect 대신 동기 처리로 플리커링 방지)
   const effectiveStep: OnboardingStep =
-    member?.termsAgreed ? 2 : step;
+    step === 3 ? 3 : member?.termsAgreed ? 2 : step;
 
   const form = useForm<ReporterForm>({
     defaultValues: {
       name: "",
       birthDate: "",
       phone: "",
-      hometaxId: "",
       termsService: false,
       termsPrivacy: false,
     },
@@ -93,12 +98,123 @@ function OnboardingContent() {
 
   const { isValid, isSubmitting } = form.formState;
 
+  // 홈택스 연동 상태
+  const [hometaxJobId, setHometaxJobId] = useState<string | null>(null);
+  const [selectedBizNumbers, setSelectedBizNumbers] = useState<Set<string>>(new Set());
+  const [isSyncing, setIsSyncing] = useState(false);
+
   // 약관 상세보기
   const [termsView, setTermsView] = useState<{
     field: "termsService" | "termsPrivacy";
     title: string;
     url: string;
   } | null>(null);
+
+  // 홈택스 연동 폴링 (useQuery refetchInterval)
+  const { data: jobStatus } = useQuery<{
+    jobId: string;
+    status: string;
+    message: string;
+    businesses: HometaxBusiness[];
+  }>({
+    queryKey: ["hometax", "job", hometaxJobId],
+    queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/hometax/auth/${hometaxJobId}/status`);
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: !!hometaxJobId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      if (status === "COMPLETED" || status === "FAILED") return false;
+      return 3000;
+    },
+  });
+
+  const isLinking = !!hometaxJobId && jobStatus?.status !== "COMPLETED" && jobStatus?.status !== "FAILED";
+  const hometaxMessage = jobStatus?.message ?? null;
+  const hometaxBusinesses = jobStatus?.businesses ?? [];
+
+  // COMPLETED → 3단계 이동, FAILED → 에러 토스트
+  useEffect(() => {
+    if (jobStatus?.status === "COMPLETED") {
+      setStep(3);
+    } else if (jobStatus?.status === "FAILED") {
+      toast.error(jobStatus.message || "홈택스 연동에 실패했습니다.");
+    }
+  }, [jobStatus?.status]);
+
+  async function handleHometaxLink() {
+    if (!member) return;
+    setHometaxJobId(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/hometax/auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: member.name,
+          birthDate: member.birthDate,
+          phoneNumber: member.phoneNumber,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      setHometaxJobId(json.data.jobId);
+    } catch {
+      toast.error("홈택스 연동 요청에 실패했습니다.");
+    }
+  }
+
+  function toggleBusiness(bizNumber: string) {
+    setSelectedBizNumbers((prev) => {
+      const next = new Set(prev);
+      if (next.has(bizNumber)) {
+        next.delete(bizNumber);
+      } else if (next.size < 5) {
+        next.add(bizNumber);
+      } else {
+        toast.error("최대 5개까지 선택할 수 있습니다.");
+      }
+      return next;
+    });
+  }
+
+  async function handleSyncCompanies() {
+    const selected = hometaxBusinesses.filter((b) =>
+      selectedBizNumbers.has(b.bizNumber)
+    );
+    if (selected.length === 0) {
+      toast.error("사업장을 1개 이상 선택해주세요.");
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(`${apiUrl}/api/companies`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businesses: selected.map((b) => ({
+            name: b.name,
+            bizNumber: b.bizNumber.replace(/-/g, ""),
+          })),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      await queryClient.invalidateQueries({ queryKey: ["member"] });
+      toast.success("사업장 등록이 완료되었습니다.");
+      router.replace("/home");
+    } catch {
+      toast.error("사업장 등록에 실패했습니다.");
+    } finally {
+      setIsSyncing(false);
+    }
+  }
 
 
   async function onSubmitReporter(data: ReporterForm) {
@@ -111,7 +227,6 @@ function OnboardingContent() {
           name: data.name.trim(),
           birthDate: data.birthDate,
           phoneNumber: data.phone,
-          hometaxUserId: data.hometaxId.trim(),
           termsAgreed: true,
         }),
       });
@@ -127,7 +242,9 @@ function OnboardingContent() {
     router.replace("/home");
   };
 
-  const headerTitle = effectiveStep === 1 ? "신고자 정보 입력" : "사업장 등록";
+  const headerTitle =
+    effectiveStep === 1 ? "신고자 정보 입력" :
+    effectiveStep === 2 ? "사업장 등록" : "사업장 선택";
 
   if (memberLoading) {
     return (
@@ -245,26 +362,6 @@ function OnboardingContent() {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="hometaxId"
-                rules={{ required: true, minLength: 1 }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-base font-bold text-black-100">
-                      홈택스 아이디
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="text"
-                        placeholder="홈택스 아이디 입력"
-                        className="placeholder:text-black-40"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
             </div>
 
             {/* 약관 동의 */}
@@ -422,11 +519,91 @@ function OnboardingContent() {
             <Button
               size="xl"
               className="w-full"
-              onClick={() =>
-                toast.info("홈택스 연동 기능은 준비 중입니다.")
-              }
+              onClick={handleHometaxLink}
             >
               홈택스 연동하기
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* 홈택스 연동 전체 화면 오버레이 */}
+      {isLinking && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+          <Loader2 size={48} className="animate-spin text-primary-100" />
+          <p className="mt-4 text-base font-medium text-black-100">
+            {hometaxMessage || "홈택스 연동 준비 중..."}
+          </p>
+          <p className="mt-2 text-sm text-black-40">
+            잠시만 기다려주세요
+          </p>
+        </div>
+      )}
+
+      {/* 3단계: 사업장 선택 */}
+      {effectiveStep === 3 && (
+        <div className="flex flex-1 flex-col px-6">
+          <div className="mt-6">
+            <h1 className="text-[22px] font-bold leading-[1.45] tracking-tight text-black-100">
+              사업장을 선택해주세요
+            </h1>
+            <p className="mt-2 text-sm text-black-60">
+              최대 5개까지 선택할 수 있습니다. ({selectedBizNumbers.size}/{Math.min(hometaxBusinesses.length, 5)})
+            </p>
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3">
+            {hometaxBusinesses.map((biz) => {
+              const isSelected = selectedBizNumbers.has(biz.bizNumber);
+              return (
+                <button
+                  key={biz.bizNumber}
+                  type="button"
+                  onClick={() => toggleBusiness(biz.bizNumber)}
+                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
+                    isSelected
+                      ? "border-primary-100 bg-primary-100/5"
+                      : "border-black-20"
+                  }`}
+                >
+                  <div
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                      isSelected
+                        ? "bg-primary-100 text-white"
+                        : "border border-black-40 text-transparent"
+                    }`}
+                  >
+                    <Check size={14} />
+                  </div>
+                  <div className="flex flex-1 flex-col gap-0.5">
+                    <span className="text-sm font-semibold text-black-100">
+                      {biz.name}
+                    </span>
+                    <span className="text-xs text-black-60">
+                      {biz.bizNumber} · {biz.status}
+                    </span>
+                  </div>
+                  <Building2 size={20} className="shrink-0 text-black-40" />
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-auto pb-8 pt-8">
+            <Button
+              size="xl"
+              className="w-full"
+              disabled={selectedBizNumbers.size === 0 || isSyncing}
+              onClick={handleSyncCompanies}
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 size={18} className="mr-2 animate-spin" />
+                  등록 중...
+                </>
+              ) : (
+                `선택한 사업장 등록 (${selectedBizNumbers.size}개)`
+              )}
             </Button>
           </div>
         </div>
