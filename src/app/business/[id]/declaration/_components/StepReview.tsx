@@ -5,21 +5,25 @@ import { Button } from "@/components/ui/button";
 import type { IncomeEarner, TaxCalculation } from "../types";
 import { ReviewSection } from "./ReviewSection";
 
+interface RecipientTax {
+  name: string;
+  incomeType: string;
+  preTaxAmount: number;
+  incomeTax: number;
+  localTax: number;
+  afterTaxAmount: number;
+}
+
 interface StepReviewProps {
   businessName: string;
   bizNumber: string;
   bizCode: string;
   earners: IncomeEarner[];
   taxCalculation: TaxCalculation;
+  recipientTaxes: RecipientTax[];
   isAmendment: boolean;
   onEdit: () => void;
   onSubmit: () => void;
-}
-
-function calcEarnerTax(amount: number) {
-  const nationalTax = Math.round(amount * 0.03);
-  const localTax = Math.round(nationalTax * 0.1);
-  return { nationalTax, localTax };
 }
 
 export function StepReview({
@@ -28,6 +32,7 @@ export function StepReview({
   bizCode,
   earners,
   taxCalculation,
+  recipientTaxes,
   isAmendment,
   onEdit,
   onSubmit,
@@ -78,43 +83,40 @@ export function StepReview({
         {/* 소득자 정보 */}
         <ReviewSection title="소득자 정보">
           <div className="flex flex-col">
-            {earners.map((earner, index) => {
-              const { nationalTax, localTax } = calcEarnerTax(earner.amount);
-              return (
-                <div key={earner.id}>
-                  {index > 0 && (
-                    <div className="my-3 border-t border-black-20" />
-                  )}
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium text-black-100">
-                      {earner.name}
+            {recipientTaxes.map((rt, index) => (
+              <div key={earners[index]?.id ?? index}>
+                {index > 0 && (
+                  <div className="my-3 border-t border-black-20" />
+                )}
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-black-100">
+                    {rt.name}
+                  </span>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-black-60">세전 금액</span>
+                    <span className="text-xs text-black-100">
+                      {rt.preTaxAmount.toLocaleString("ko-KR")}원
                     </span>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-black-60">세전 금액</span>
-                      <span className="text-xs text-black-100">
-                        {earner.amount.toLocaleString("ko-KR")}원
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-black-60">
-                        국세(원천세)
-                      </span>
-                      <span className="text-xs text-black-100">
-                        {nationalTax.toLocaleString("ko-KR")}원
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-xs text-black-60">
-                        지방세(원천세)
-                      </span>
-                      <span className="text-xs text-black-100">
-                        {localTax.toLocaleString("ko-KR")}원
-                      </span>
-                    </div>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-black-60">
+                      국세(원천세)
+                    </span>
+                    <span className="text-xs text-black-100">
+                      {rt.incomeTax.toLocaleString("ko-KR")}원
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-black-60">
+                      지방세(원천세)
+                    </span>
+                    <span className="text-xs text-black-100">
+                      {rt.localTax.toLocaleString("ko-KR")}원
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </ReviewSection>
 

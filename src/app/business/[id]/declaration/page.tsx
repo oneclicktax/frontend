@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { IncomeEarner, TaxCalculation } from "./types";
 
+
 // 제출일 계산: 귀속월 다음달 10일
 function calcSubmitDate(year: number, month: number): string {
   const submitMonth = month === 12 ? 1 : month + 1;
@@ -59,21 +60,18 @@ import { StepEarnerInfo } from "./_components/StepEarnerInfo";
 import { StepPaymentNotice } from "./_components/StepPaymentNotice";
 import { StepReview } from "./_components/StepReview";
 
-function calculateTax(
-  earners: IncomeEarner[],
-  isOverdue: boolean,
-): TaxCalculation {
-  let totalPreTaxAmount = 0;
-  for (const earner of earners) {
-    totalPreTaxAmount += earner.amount;
-  }
-
-  const nationalTax = Math.round(totalPreTaxAmount * 0.03);
-  const localTax = Math.round(nationalTax * 0.1);
-  const surcharge = isOverdue ? Math.round(nationalTax * 0.03) : undefined;
-  const totalTax = nationalTax + localTax + (surcharge ?? 0);
-
-  return { nationalTax, localTax, surcharge, totalTax };
+interface TaxCalcApiResponse {
+  recipients: {
+    name: string;
+    incomeType: string;
+    preTaxAmount: number;
+    incomeTax: number;
+    localTax: number;
+    afterTaxAmount: number;
+  }[];
+  totalIncomeTax: number;
+  totalLocalTax: number;
+  totalTax: number;
 }
 
 function WithholdingTaxContent() {
@@ -155,6 +153,33 @@ function WithholdingTaxContent() {
 
   const isOverdue = searchParams.get("overdue") === "true";
 
+  // 세금 계산 API 호출 (step 4 진입 시)
+  const { data: taxCalcData, isLoading: isTaxCalcLoading } = useQuery<TaxCalcApiResponse>({
+    queryKey: ["tax-calculate", businessId, earners],
+    queryFn: async () => {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const res = await fetchWithAuth(
+        `${apiUrl}/api/companies/${businessId}/withholding-tax/calculate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recipients: earners.map((e) => ({
+              name: e.name,
+              incomeType: e.incomeType,
+              paymentAmount: e.amount,
+              amountType: e.amountType === "pre-tax" ? "PRE_TAX" : "AFTER_TAX",
+            })),
+          }),
+        },
+      );
+      if (!res.ok) throw new Error();
+      const json = await res.json();
+      return json.data;
+    },
+    enabled: step === 4 && earners.length > 0,
+  });
+
   const headerTitle =
     step <= 3
       ? `${year}년 ${month}월 귀속 원천세`
@@ -229,6 +254,7 @@ function WithholdingTaxContent() {
               incomeType: e.incomeType,
               paymentDate: e.paymentDate,
               paymentAmount: e.amount,
+              amountType: e.amountType === "pre-tax" ? "PRE_TAX" : "AFTER_TAX",
             })),
           }),
         },
@@ -254,7 +280,14 @@ function WithholdingTaxContent() {
     );
   }
 
-  const taxCalculation = calculateTax(earners, isOverdue);
+  const taxCalculation: TaxCalculation | null = taxCalcData
+    ? {
+        nationalTax: taxCalcData.totalIncomeTax,
+        localTax: taxCalcData.totalLocalTax,
+        surcharge: isOverdue ? Math.round(taxCalcData.totalIncomeTax * 0.03) : undefined,
+        totalTax: taxCalcData.totalTax + (isOverdue ? Math.round(taxCalcData.totalIncomeTax * 0.03) : 0),
+      }
+    : null;
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -281,18 +314,23 @@ function WithholdingTaxContent() {
 
         {step === 3 && <StepPaymentNotice onNext={() => setStep(4)} />}
 
-        {step === 4 && (
+        {step === 4 && (isTaxCalcLoading || !taxCalculation || !taxCalcData ? (
+          <div className="flex flex-1 items-center justify-center">
+            <Loader2 size={32} className="animate-spin text-primary-100" />
+          </div>
+        ) : (
           <StepReview
             businessName={business.name}
             bizNumber={business.bizNumber}
             bizCode={business.bizCode}
             earners={earners}
             taxCalculation={taxCalculation}
+            recipientTaxes={taxCalcData.recipients}
             isAmendment={isAmendment}
             onEdit={() => setStep(2)}
             onSubmit={handleSubmit}
           />
-        )}
+        ))}
       </div>
 
       {/* 신고 진행 중 로딩 오버레이 */}
