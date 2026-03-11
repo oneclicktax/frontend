@@ -10,11 +10,13 @@ import { toast } from "sonner";
 import type { IncomeEarner, TaxCalculation } from "./types";
 
 
-// 제출일 계산: 귀속월 다음달 10일
-function calcSubmitDate(year: number, month: number): string {
-  const submitMonth = month === 12 ? 1 : month + 1;
-  const submitYear = month === 12 ? year + 1 : year;
-  return `${submitYear}-${String(submitMonth).padStart(2, "0")}-10`;
+// 제출일: 오늘 날짜
+function calcSubmitDate(): string {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, "0");
+  const d = String(today.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 const STATUS_MESSAGES: Record<string, string> = {
@@ -240,7 +242,7 @@ function WithholdingTaxContent() {
           body: JSON.stringify({
             year,
             month,
-            submitDate: calcSubmitDate(year, month),
+            submitDate: calcSubmitDate(),
             amendedReturn: isAmendment,
             userName: member?.name ?? "",
             phone: member?.phoneNumber ?? "",
