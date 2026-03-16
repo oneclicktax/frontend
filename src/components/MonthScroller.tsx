@@ -4,6 +4,7 @@ import { useRef, useEffect, useLayoutEffect } from "react";
 
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
+import dayjs from "dayjs";
 import { CircleCheck, LockKeyhole, CircleAlert } from "lucide-react";
 
 export type MonthStatus = "default" | "completed" | "locked" | "error";
@@ -20,13 +21,12 @@ interface MonthScrollerProps {
 }
 
 function generateMonths(): MonthItem[] {
+  const now = dayjs();
   const items: MonthItem[] = [];
-  for (let y = 2025; y <= 2026; y++) {
-    const startM = y === 2025 ? 11 : 1;
-    const endM = 12;
-    for (let m = startM; m <= endM; m++) {
-      items.push({ year: y, month: m });
-    }
+  // 과거 11개월 + 당월 + 미래 12개월 (총 24개월)
+  for (let offset = -11; offset <= 12; offset++) {
+    const d = now.add(offset, "month");
+    items.push({ year: d.year(), month: d.month() + 1 });
   }
   return items;
 }
