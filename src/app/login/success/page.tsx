@@ -32,7 +32,7 @@ export default function LoginSuccessPage() {
           router.replace("/onboarding");
         } else if (!hasCompanies) {
           // 약관 동의했지만 사업장 없음 → 온보딩 2단계부터
-          router.replace("/onboarding?step=2");
+          router.replace("/business/register");
         } else {
           router.replace("/home");
         }

@@ -175,7 +175,7 @@ export function BusinessRegisterForm({
           <Button
             size="xl"
             className="w-full"
-            disabled={businesses.length === 0 || saving}
+            disabled={saving}
             onClick={onSave}
           >
             {saving ? (

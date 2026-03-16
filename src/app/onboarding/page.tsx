@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronRight, Loader2, X, Building2 } from "lucide-react";
+import { Check, ChevronRight, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +22,7 @@ const TERMS_URLS = {
 } as const;
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { memberApi, companyApi, hometaxApi, type Member, type HometaxAuthStatus } from "@/lib/api";
+import { memberApi, type Member } from "@/lib/api";
 
 function formatBirthDate(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 8);
@@ -46,14 +46,9 @@ interface ReporterForm {
   termsPrivacy: boolean;
 }
 
-type OnboardingStep = 1 | 2 | 3;
-
 function OnboardingContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-
-  const [step, setStep] = useState<OnboardingStep>(1);
 
   // 회원 정보 조회하여 이미 완료된 단계 스킵
   const { data: member, isLoading: memberLoading } = useQuery<Member>({
@@ -63,10 +58,6 @@ function OnboardingContent() {
     },
     staleTime: 0,
   });
-
-  // 약관 동의 완료 시 즉시 2단계로 설정 (useEffect 대신 동기 처리로 플리커링 방지)
-  const effectiveStep: OnboardingStep =
-    step === 3 ? 3 : member?.termsAgreed ? 2 : step;
 
   const form = useForm<ReporterForm>({
     defaultValues: {
@@ -81,100 +72,12 @@ function OnboardingContent() {
 
   const { isValid, isSubmitting } = form.formState;
 
-  // 홈택스 연동 상태
-  const [hometaxJobId, setHometaxJobId] = useState<string | null>(null);
-  const [selectedBizNumbers, setSelectedBizNumbers] = useState<Set<string>>(new Set());
-  const [isSyncing, setIsSyncing] = useState(false);
-
   // 약관 상세보기
   const [termsView, setTermsView] = useState<{
     field: "termsService" | "termsPrivacy";
     title: string;
     url: string;
   } | null>(null);
-
-  // 홈택스 연동 폴링 (useQuery refetchInterval)
-  const { data: jobStatus } = useQuery<HometaxAuthStatus>({
-    queryKey: ["hometax", "job", hometaxJobId],
-    queryFn: async () => {
-      return hometaxApi.getAuthStatus(hometaxJobId!);
-    },
-    enabled: !!hometaxJobId,
-    refetchInterval: (query) => {
-      const status = query.state.data?.status;
-      if (status === "COMPLETED" || status === "FAILED") return false;
-      return 3000;
-    },
-  });
-
-  const isLinking = !!hometaxJobId && jobStatus?.status !== "COMPLETED" && jobStatus?.status !== "FAILED";
-  const hometaxMessage = jobStatus?.message ?? null;
-  const hometaxBusinesses = jobStatus?.businesses ?? [];
-
-  // COMPLETED → 3단계 이동, FAILED → 에러 토스트
-  useEffect(() => {
-    if (jobStatus?.status === "COMPLETED") {
-      setStep(3);
-    } else if (jobStatus?.status === "FAILED") {
-      toast.error(jobStatus.message || "홈택스 연동에 실패했습니다.");
-    }
-  }, [jobStatus?.status]);
-
-  async function handleHometaxLink() {
-    if (!member) return;
-    setHometaxJobId(null);
-
-    try {
-      const res = await hometaxApi.requestAuth({
-        name: member.name,
-        birthDate: member.birthDate,
-        phoneNumber: member.phoneNumber,
-      });
-      setHometaxJobId(res.jobId);
-    } catch {
-      toast.error("홈택스 연동 요청에 실패했습니다.");
-    }
-  }
-
-  function toggleBusiness(bizNumber: string) {
-    setSelectedBizNumbers((prev) => {
-      const next = new Set(prev);
-      if (next.has(bizNumber)) {
-        next.delete(bizNumber);
-      } else if (next.size < 5) {
-        next.add(bizNumber);
-      } else {
-        toast.error("최대 5개까지 선택할 수 있습니다.");
-      }
-      return next;
-    });
-  }
-
-  async function handleSyncCompanies() {
-    const selected = hometaxBusinesses.filter((b) =>
-      selectedBizNumbers.has(b.bizNumber)
-    );
-    if (selected.length === 0) {
-      toast.error("사업장을 1개 이상 선택해주세요.");
-      return;
-    }
-
-    setIsSyncing(true);
-    try {
-      await companyApi.save(selected.map((b) => ({
-        name: b.name,
-        bizNumber: b.bizNumber.replace(/-/g, ""),
-      })));
-      await queryClient.invalidateQueries({ queryKey: ["member"] });
-      toast.success("사업장 등록이 완료되었습니다.");
-      router.replace("/home");
-    } catch {
-      toast.error("사업장 등록에 실패했습니다.");
-    } finally {
-      setIsSyncing(false);
-    }
-  }
-
 
   async function onSubmitReporter(data: ReporterForm) {
     try {
@@ -185,21 +88,23 @@ function OnboardingContent() {
         termsAgreed: true,
       });
       await queryClient.invalidateQueries({ queryKey: ["member"] });
-      setStep(2);
+      router.replace("/business/register");
     } catch {
       toast.error("신고자 정보 저장에 실패했습니다.");
     }
   }
 
-  const handleBack = () => {
-    router.replace("/home");
-  };
-
-  const headerTitle =
-    effectiveStep === 1 ? "신고자 정보 입력" :
-    effectiveStep === 2 ? "사업장 등록" : "사업장 선택";
-
   if (memberLoading) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-primary-100" />
+      </div>
+    );
+  }
+
+  // 약관 동의 완료 시 사업장 등록으로 리다이렉트
+  if (member?.termsAgreed) {
+    router.replace("/business/register");
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Loader2 size={32} className="animate-spin text-primary-100" />
@@ -210,203 +115,189 @@ function OnboardingContent() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="relative flex h-14 shrink-0 items-center justify-center px-6">
-        {effectiveStep !== 1 && (
-          <button
-            type="button"
-            onClick={handleBack}
-            className="absolute left-6"
-            aria-label="뒤로가기"
-          >
-            <ArrowLeft size={24} className="text-black-100" />
-          </button>
-        )}
         <span className="text-base font-medium tracking-tight text-black-100">
-          {headerTitle}
+          신고자 정보 입력
         </span>
       </header>
 
-      {/* 1단계: 신고자 정보 입력 */}
-      {effectiveStep === 1 && (
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmitReporter)}
-            className="flex flex-1 flex-col px-6"
-          >
-            <div className="mt-6">
-              <h1 className="text-[22px] font-bold leading-[1.45] tracking-tight text-black-100">
-                신고자 정보를 입력해주세요
-              </h1>
-            </div>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmitReporter)}
+          className="flex flex-1 flex-col px-6"
+        >
+          <div className="mt-6">
+            <h1 className="text-[22px] font-bold leading-[1.45] tracking-tight text-black-100">
+              신고자 정보를 입력해주세요
+            </h1>
+          </div>
 
-            <div className="mt-8 flex flex-col gap-5">
-              <FormField
-                control={form.control}
-                name="name"
-                rules={{ required: true, minLength: 1 }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-base font-bold text-black-100">
-                      이름
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="text"
-                        placeholder="이름 입력"
-                        className="placeholder:text-black-40"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+          <div className="mt-8 flex flex-col gap-5">
+            <FormField
+              control={form.control}
+              name="name"
+              rules={{ required: true, minLength: 1 }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-bold text-black-100">
+                    이름
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      {...field}
+                      type="text"
+                      placeholder="이름 입력"
+                      className="placeholder:text-black-40"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="birthDate"
-                rules={{ required: true, pattern: /^\d{8}$/ }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-base font-bold text-black-100">
-                      생년월일
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="1997 10 21"
-                        className="placeholder:text-black-40"
-                        value={formatBirthDate(field.value)}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value.replace(/\D/g, "").slice(0, 8),
-                          )
-                        }
-                        onBlur={field.onBlur}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="phone"
-                rules={{ required: true, pattern: /^\d{10,11}$/ }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-base font-bold text-black-100">
-                      전화번호
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="tel"
-                        placeholder="010 1234 1234"
-                        className="placeholder:text-black-40"
-                        value={formatPhone(field.value)}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value.replace(/\D/g, "").slice(0, 11),
-                          )
-                        }
-                        onBlur={field.onBlur}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-            </div>
-
-            {/* 약관 동의 */}
-            <div className="mt-6 flex flex-col gap-3">
-              <FormField
-                control={form.control}
-                name="termsService"
-                rules={{ validate: (v) => v === true }}
-                render={({ field }) => (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => field.onChange(!field.value)}
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                        field.value
-                          ? "bg-primary-100 text-white"
-                          : "border border-black-40 text-transparent"
-                      }`}
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTermsView({
-                          field: "termsService",
-                          title: "서비스 이용약관",
-                          url: TERMS_URLS.termsService,
-                        })
+            <FormField
+              control={form.control}
+              name="birthDate"
+              rules={{ required: true, pattern: /^\d{8}$/ }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-bold text-black-100">
+                    생년월일
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="1997 10 21"
+                      className="placeholder:text-black-40"
+                      value={formatBirthDate(field.value)}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value.replace(/\D/g, "").slice(0, 8),
+                        )
                       }
-                      className="flex flex-1 items-center justify-between"
-                    >
-                      <span className="text-sm text-black-100">
-                        서비스 이용약관(필수)
-                      </span>
-                      <ChevronRight size={16} className="text-black-60" />
-                    </button>
-                  </div>
-                )}
-              />
+                      onBlur={field.onBlur}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="termsPrivacy"
-                rules={{ validate: (v) => v === true }}
-                render={({ field }) => (
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => field.onChange(!field.value)}
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                        field.value
-                          ? "bg-primary-100 text-white"
-                          : "border border-black-40 text-transparent"
-                      }`}
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTermsView({
-                          field: "termsPrivacy",
-                          title: "개인정보 처리방침",
-                          url: TERMS_URLS.termsPrivacy,
-                        })
+            <FormField
+              control={form.control}
+              name="phone"
+              rules={{ required: true, pattern: /^\d{10,11}$/ }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-base font-bold text-black-100">
+                    전화번호
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="010 1234 1234"
+                      className="placeholder:text-black-40"
+                      value={formatPhone(field.value)}
+                      onChange={(e) =>
+                        field.onChange(
+                          e.target.value.replace(/\D/g, "").slice(0, 11),
+                        )
                       }
-                      className="flex flex-1 items-center justify-between"
-                    >
-                      <span className="text-sm text-black-100">
-                        개인정보 처리방침(필수)
-                      </span>
-                      <ChevronRight size={16} className="text-black-60" />
-                    </button>
-                  </div>
-                )}
-              />
-            </div>
+                      onBlur={field.onBlur}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
 
-            <div className="mt-auto pb-8 pt-8">
-              <Button
-                type="submit"
-                size="xl"
-                className="w-full"
-                disabled={!isValid || isSubmitting}
-              >
-                다음
-              </Button>
-            </div>
-          </form>
-        </Form>
-      )}
+          {/* 약관 동의 */}
+          <div className="mt-6 flex flex-col gap-3">
+            <FormField
+              control={form.control}
+              name="termsService"
+              rules={{ validate: (v) => v === true }}
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => field.onChange(!field.value)}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                      field.value
+                        ? "bg-primary-100 text-white"
+                        : "border border-black-40 text-transparent"
+                    }`}
+                  >
+                    <Check size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTermsView({
+                        field: "termsService",
+                        title: "서비스 이용약관",
+                        url: TERMS_URLS.termsService,
+                      })
+                    }
+                    className="flex flex-1 items-center justify-between"
+                  >
+                    <span className="text-sm text-black-100">
+                      서비스 이용약관(필수)
+                    </span>
+                    <ChevronRight size={16} className="text-black-60" />
+                  </button>
+                </div>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="termsPrivacy"
+              rules={{ validate: (v) => v === true }}
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => field.onChange(!field.value)}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
+                      field.value
+                        ? "bg-primary-100 text-white"
+                        : "border border-black-40 text-transparent"
+                    }`}
+                  >
+                    <Check size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTermsView({
+                        field: "termsPrivacy",
+                        title: "개인정보 처리방침",
+                        url: TERMS_URLS.termsPrivacy,
+                      })
+                    }
+                    className="flex flex-1 items-center justify-between"
+                  >
+                    <span className="text-sm text-black-100">
+                      개인정보 처리방침(필수)
+                    </span>
+                    <ChevronRight size={16} className="text-black-60" />
+                  </button>
+                </div>
+              )}
+            />
+          </div>
+
+          <div className="mt-auto pb-8 pt-8">
+            <Button
+              type="submit"
+              size="xl"
+              className="w-full"
+              disabled={!isValid || isSubmitting}
+            >
+              다음
+            </Button>
+          </div>
+        </form>
+      </Form>
 
       {/* 약관 상세보기 */}
       {termsView && (
@@ -447,121 +338,6 @@ function OnboardingContent() {
           </div>
         </div>
       )}
-
-      {/* 2단계: 사업장 등록 - 홈택스 연동 선택 */}
-      {effectiveStep === 2 && (
-        <div className="flex flex-1 flex-col px-6">
-          <div className="mt-6">
-            <h1 className="text-[22px] font-bold leading-[1.45] tracking-tight">
-              <span className="text-primary-100">홈택스 연동해서</span>
-              <br />
-              <span className="text-black-100">
-                사업장 정보를 한 번에 가져올까요?
-              </span>
-            </h1>
-          </div>
-
-          <div className="mt-auto flex flex-col items-center gap-3 pb-8">
-            <Button
-              variant="ghost"
-              onClick={() => router.replace("/business/register")}
-              className="text-black-60"
-            >
-              사업장 수기로 입력할래요.
-            </Button>
-            <Button
-              size="xl"
-              className="w-full"
-              onClick={handleHometaxLink}
-            >
-              홈택스 연동하기
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* 홈택스 연동 전체 화면 오버레이 */}
-      {isLinking && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
-          <Loader2 size={48} className="animate-spin text-primary-100" />
-          <p className="mt-4 text-base font-medium text-black-100">
-            {hometaxMessage || "홈택스 연동 준비 중..."}
-          </p>
-          <p className="mt-2 text-sm text-black-40">
-            잠시만 기다려주세요
-          </p>
-        </div>
-      )}
-
-      {/* 3단계: 사업장 선택 */}
-      {effectiveStep === 3 && (
-        <div className="flex flex-1 flex-col px-6">
-          <div className="mt-6">
-            <h1 className="text-[22px] font-bold leading-[1.45] tracking-tight text-black-100">
-              사업장을 선택해주세요
-            </h1>
-            <p className="mt-2 text-sm text-black-60">
-              최대 5개까지 선택할 수 있습니다. ({selectedBizNumbers.size}/{Math.min(hometaxBusinesses.length, 5)})
-            </p>
-          </div>
-
-          <div className="mt-6 flex flex-col gap-3">
-            {hometaxBusinesses.map((biz) => {
-              const isSelected = selectedBizNumbers.has(biz.bizNumber);
-              return (
-                <button
-                  key={biz.bizNumber}
-                  type="button"
-                  onClick={() => toggleBusiness(biz.bizNumber)}
-                  className={`flex items-center gap-3 rounded-xl border p-4 text-left transition-colors ${
-                    isSelected
-                      ? "border-primary-100 bg-primary-100/5"
-                      : "border-black-20"
-                  }`}
-                >
-                  <div
-                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded ${
-                      isSelected
-                        ? "bg-primary-100 text-white"
-                        : "border border-black-40 text-transparent"
-                    }`}
-                  >
-                    <Check size={14} />
-                  </div>
-                  <div className="flex flex-1 flex-col gap-0.5">
-                    <span className="text-sm font-semibold text-black-100">
-                      {biz.name}
-                    </span>
-                    <span className="text-xs text-black-60">
-                      {biz.bizNumber} · {biz.status}
-                    </span>
-                  </div>
-                  <Building2 size={20} className="shrink-0 text-black-40" />
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mt-auto pb-8 pt-8">
-            <Button
-              size="xl"
-              className="w-full"
-              disabled={selectedBizNumbers.size === 0 || isSyncing}
-              onClick={handleSyncCompanies}
-            >
-              {isSyncing ? (
-                <>
-                  <Loader2 size={18} className="mr-2 animate-spin" />
-                  등록 중...
-                </>
-              ) : (
-                `선택한 사업장 등록 (${selectedBizNumbers.size}개)`
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
