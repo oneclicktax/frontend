@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PlusCircle } from "lucide-react";
 import dayjs from "dayjs";
 import { Button } from "@/components/ui/button";
@@ -27,11 +28,6 @@ interface StepEarnerInfoProps {
 function generateId() {
   return Math.random().toString(36).slice(2, 9);
 }
-
-type ViewState =
-  | { type: "list" }
-  | { type: "new"; data: Partial<IncomeEarner> }
-  | { type: "edit"; index: number; data: Partial<IncomeEarner> };
 
 function getDefaultFormData(
   belongYear: number,
@@ -66,41 +62,64 @@ export function StepEarnerInfo({
   belongYear,
   belongMonth,
 }: StepEarnerInfoProps) {
-  const [viewState, setViewState] = useState<ViewState>({ type: "list" });
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // URL에서 view 상태 읽기: null = list, "new", "edit"
+  const view = searchParams.get("view") as "new" | "edit" | null;
+  const editIndex = view === "edit" ? Number(searchParams.get("editIndex") || 0) : -1;
+
+  const [formData, setFormData] = useState<Partial<IncomeEarner>>(
+    getDefaultFormData(belongYear, belongMonth),
+  );
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
+  const navigateToView = useCallback(
+    (params: Record<string, string | null>) => {
+      const newParams = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(params)) {
+        if (value === null) {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, value);
+        }
+      }
+      router.push(`?${newParams.toString()}`);
+    },
+    [searchParams, router],
+  );
+
   const isFormValid =
-    viewState.type !== "list" &&
+    !!view &&
     !!(
-      viewState.data.name &&
-      viewState.data.residentNumber &&
-      viewState.data.phone &&
-      viewState.data.amount &&
-      viewState.data.amount > 0
+      formData.name &&
+      formData.residentNumber &&
+      formData.phone &&
+      formData.amount &&
+      formData.amount > 0
     );
 
   const handleAdd = () => {
-    setViewState({
-      type: "new",
-      data: getDefaultFormData(belongYear, belongMonth),
-    });
+    setFormData(getDefaultFormData(belongYear, belongMonth));
+    navigateToView({ view: "new", editIndex: null });
   };
 
   const handleEdit = (index: number) => {
-    setViewState({ type: "edit", index, data: { ...earners[index] } });
+    setFormData({ ...earners[index] });
+    navigateToView({ view: "edit", editIndex: String(index) });
   };
 
   const handleComplete = () => {
-    if (viewState.type === "list" || !isFormValid) return;
-    const earner = buildEarner(viewState.data);
-    if (viewState.type === "new") {
+    if (!view || !isFormValid) return;
+    const earner = buildEarner(formData);
+    if (view === "new") {
       onEarnersChange([...earners, earner]);
-    } else {
+    } else if (view === "edit") {
       const newEarners = [...earners];
-      newEarners[viewState.index] = earner;
+      newEarners[editIndex] = earner;
       onEarnersChange(newEarners);
     }
-    setViewState({ type: "list" });
+    router.back();
   };
 
   const handleDeleteRequest = () => {
@@ -108,15 +127,15 @@ export function StepEarnerInfo({
   };
 
   const handleDeleteConfirm = () => {
-    if (viewState.type === "edit") {
-      onEarnersChange(earners.filter((_, i) => i !== viewState.index));
+    if (view === "edit") {
+      onEarnersChange(earners.filter((_, i) => i !== editIndex));
     }
     setDeleteConfirmOpen(false);
-    setViewState({ type: "list" });
+    router.back();
   };
 
   // 목록 화면
-  if (viewState.type === "list") {
+  if (!view) {
     return (
       <div className="flex min-h-0 flex-1 flex-col px-6 pb-8">
         <div className="mt-6">
@@ -175,12 +194,8 @@ export function StepEarnerInfo({
 
       <div className="mt-8 min-h-0 flex-1 overflow-y-auto">
         <EarnerForm
-          earner={viewState.data}
-          onChange={(data) =>
-            setViewState((prev) =>
-              prev.type === "list" ? prev : { ...prev, data },
-            )
-          }
+          earner={formData}
+          onChange={setFormData}
           onDelete={handleDeleteRequest}
           belongYear={belongYear}
           belongMonth={belongMonth}

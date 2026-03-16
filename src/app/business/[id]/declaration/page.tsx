@@ -71,7 +71,16 @@ function WithholdingTaxContent() {
 
   const draftKey = getDraftKey(businessId, year, month);
 
-  const [step, setStep] = useState(1);
+  const step = Number(searchParams.get("step") || 1);
+
+  const goToStep = useCallback(
+    (newStep: number) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("step", String(newStep));
+      router.push(`?${params.toString()}`);
+    },
+    [searchParams, router],
+  );
   const [earners, setEarners] = useState<IncomeEarner[]>([]);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -149,11 +158,7 @@ function WithholdingTaxContent() {
       : `${year}년 ${month}월 귀속 제출`;
 
   const handleBack = () => {
-    if (step > 1) {
-      setStep(step - 1);
-    } else {
-      router.back();
-    }
+    router.back();
   };
 
   // 폴링: 신고 작업 상태 조회
@@ -242,7 +247,7 @@ function WithholdingTaxContent() {
           <StepBusinessInfo
             businessName={business.name}
             bizNumber={business.bizNumber}
-            onNext={() => setStep(2)}
+            onNext={() => goToStep(2)}
           />
         )}
 
@@ -250,13 +255,13 @@ function WithholdingTaxContent() {
           <StepEarnerInfo
             earners={earners}
             onEarnersChange={handleEarnersChange}
-            onNext={() => setStep(3)}
+            onNext={() => goToStep(3)}
             belongYear={year}
             belongMonth={month}
           />
         )}
 
-        {step === 3 && <StepPaymentNotice onNext={() => setStep(4)} />}
+        {step === 3 && <StepPaymentNotice onNext={() => goToStep(4)} />}
 
         {step === 4 && (isTaxCalcLoading || !taxCalculation || !taxCalcData ? (
           <div className="flex flex-1 items-center justify-center">
@@ -271,7 +276,7 @@ function WithholdingTaxContent() {
             taxCalculation={taxCalculation}
             recipientTaxes={taxCalcData.recipients}
             isAmendment={isAmendment}
-            onEdit={() => setStep(2)}
+            onEdit={() => goToStep(2)}
             onSubmit={handleSubmit}
           />
         ))}
