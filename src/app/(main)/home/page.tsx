@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, Settings, Plus, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, ChevronRight, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { companyApi, type Company } from "@/lib/api";
+import { MainHeader } from "@/components/MainHeader";
 
 export default function HomePage() {
   const { data: businesses = [], isLoading } = useQuery<Company[]>({
@@ -21,19 +22,7 @@ export default function HomePage() {
   return (
     <div className="px-5">
       {/* 상단 바 */}
-      <header className="flex h-14 items-center justify-between">
-        <span className="text-base font-bold text-black-100">
-          원클릭 원천세
-        </span>
-        <div className="flex items-center gap-4">
-          <button type="button" aria-label="알림">
-            <Bell size={24} className="text-black-100" />
-          </button>
-          <button type="button" aria-label="설정">
-            <Settings size={24} className="text-black-100" />
-          </button>
-        </div>
-      </header>
+      <MainHeader />
 
       {/* 보유 사업장 */}
       <section className="mt-4">

@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { Bell, Settings, ChevronDown } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { MainHeader } from "@/components/MainHeader";
 import { companyApi, withholdingTaxApi, type Company, type DocumentItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -39,7 +39,6 @@ const categoryDocTypes: Record<Category, string[] | null> = {
 };
 
 export default function DocumentsPage() {
-  const router = useRouter();
   const [selectedBusinessId, setSelectedBusinessId] = useState<number | null>(
     null,
   );
@@ -141,23 +140,7 @@ export default function DocumentsPage() {
   return (
     <div className="px-5">
       {/* 상단 바 */}
-      <header className="flex h-14 items-center justify-between">
-        <span className="text-base font-bold text-black-100">
-          원클릭 원천세
-        </span>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={() => router.push("/profile/alerts")}
-            aria-label="알림"
-          >
-            <Bell size={24} className="text-black-100" />
-          </button>
-          <button type="button" aria-label="설정">
-            <Settings size={24} className="text-black-100" />
-          </button>
-        </div>
-      </header>
+      <MainHeader />
 
       {/* 사업장 선택 */}
       <button

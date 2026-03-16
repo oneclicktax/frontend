@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { removeAccessToken } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
 import { memberApi, type Member } from "@/lib/api";
+import { MainHeader } from "@/components/MainHeader";
 
 const menuItems = [
   { label: "계정 설정", href: "/profile/account" },
@@ -29,18 +30,7 @@ export default function ProfilePage() {
   return (
     <div className="px-5">
       {/* 상단 바 */}
-      <header className="flex h-14 items-center justify-between">
-        <span className="text-base font-bold text-black-100">
-          원클릭 원천세
-        </span>
-        <button
-          type="button"
-          onClick={() => router.push("/profile/alerts")}
-          aria-label="알림"
-        >
-          <Bell size={24} className="text-black-100" />
-        </button>
-      </header>
+      <MainHeader />
 
       {/* 유저 이름 */}
       <h1 className="mt-6 text-3xl font-bold text-black-100">
