@@ -22,7 +22,7 @@ const TERMS_URLS = {
 } as const;
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
+import { memberApi, companyApi, hometaxApi, type Member, type HometaxAuthStatus } from "@/lib/api";
 
 function formatBirthDate(value: string): string {
   const digits = value.replace(/\D/g, "").slice(0, 8);
@@ -46,13 +46,6 @@ interface ReporterForm {
   termsPrivacy: boolean;
 }
 
-interface HometaxBusiness {
-  name: string;
-  bizNumber: string;
-  openDate: string;
-  status: string;
-}
-
 type OnboardingStep = 1 | 2 | 3;
 
 function OnboardingContent() {
@@ -63,20 +56,10 @@ function OnboardingContent() {
   const [step, setStep] = useState<OnboardingStep>(1);
 
   // 회원 정보 조회하여 이미 완료된 단계 스킵
-  const { data: member, isLoading: memberLoading } = useQuery<{
-    name: string;
-    phoneNumber: string | null;
-    birthDate: string | null;
-    hometaxUserId: string | null;
-    termsAgreed: boolean;
-  }>({
+  const { data: member, isLoading: memberLoading } = useQuery<Member>({
     queryKey: ["member", "me", "onboarding"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return memberApi.getMe();
     },
     staleTime: 0,
   });
@@ -111,19 +94,10 @@ function OnboardingContent() {
   } | null>(null);
 
   // 홈택스 연동 폴링 (useQuery refetchInterval)
-  const { data: jobStatus } = useQuery<{
-    jobId: string;
-    status: string;
-    message: string;
-    businesses: HometaxBusiness[];
-  }>({
+  const { data: jobStatus } = useQuery<HometaxAuthStatus>({
     queryKey: ["hometax", "job", hometaxJobId],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/hometax/auth/${hometaxJobId}/status`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return hometaxApi.getAuthStatus(hometaxJobId!);
     },
     enabled: !!hometaxJobId,
     refetchInterval: (query) => {
@@ -151,19 +125,12 @@ function OnboardingContent() {
     setHometaxJobId(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/hometax/auth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: member.name,
-          birthDate: member.birthDate,
-          phoneNumber: member.phoneNumber,
-        }),
+      const res = await hometaxApi.requestAuth({
+        name: member.name,
+        birthDate: member.birthDate,
+        phoneNumber: member.phoneNumber,
       });
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      setHometaxJobId(json.data.jobId);
+      setHometaxJobId(res.jobId);
     } catch {
       toast.error("홈택스 연동 요청에 실패했습니다.");
     }
@@ -194,18 +161,10 @@ function OnboardingContent() {
 
     setIsSyncing(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/companies`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          businesses: selected.map((b) => ({
-            name: b.name,
-            bizNumber: b.bizNumber.replace(/-/g, ""),
-          })),
-        }),
-      });
-      if (!res.ok) throw new Error();
+      await companyApi.save(selected.map((b) => ({
+        name: b.name,
+        bizNumber: b.bizNumber.replace(/-/g, ""),
+      })));
       await queryClient.invalidateQueries({ queryKey: ["member"] });
       toast.success("사업장 등록이 완료되었습니다.");
       router.replace("/home");
@@ -219,18 +178,12 @@ function OnboardingContent() {
 
   async function onSubmitReporter(data: ReporterForm) {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: data.name.trim(),
-          birthDate: data.birthDate,
-          phoneNumber: data.phone,
-          termsAgreed: true,
-        }),
+      await memberApi.updateMe({
+        name: data.name.trim(),
+        birthDate: data.birthDate,
+        phoneNumber: data.phone,
+        termsAgreed: true,
       });
-      if (!res.ok) throw new Error();
       await queryClient.invalidateQueries({ queryKey: ["member"] });
       setStep(2);
     } catch {

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { setAccessToken } from "@/lib/auth";
-import { fetchWithAuth } from "@/lib/api";
+import { memberApi, companyApi } from "@/lib/api";
 
 export default function LoginSuccessPage() {
   const searchParams = useSearchParams();
@@ -20,19 +20,12 @@ export default function LoginSuccessPage() {
 
     setAccessToken(token);
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-
     Promise.all([
-      fetchWithAuth(`${apiUrl}/api/members/me`).then((r) =>
-        r.ok ? r.json() : Promise.reject(),
-      ),
-      fetchWithAuth(`${apiUrl}/api/companies`).then((r) =>
-        r.ok ? r.json() : Promise.reject(),
-      ),
+      memberApi.getMe(),
+      companyApi.getAll(),
     ])
-      .then(([memberJson, companiesJson]) => {
-        const member = memberJson.data;
-        const hasCompanies = (companiesJson.data ?? []).length > 0;
+      .then(([member, companies]) => {
+        const hasCompanies = companies.length > 0;
 
         if (!member?.termsAgreed) {
           // 약관 미동의 → 온보딩 1단계부터

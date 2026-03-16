@@ -5,24 +5,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
+import { memberApi, companyApi, type Member, type Company } from "@/lib/api";
 import { toast } from "sonner";
-
-interface Business {
-  id: number;
-  name: string;
-  bizNumber: string;
-}
-
-interface MemberMe {
-  id: number;
-  name: string;
-  phoneNumber: string | null;
-  email: string | null;
-  hometaxUserId: string | null;
-  birthDate: string | null;
-  socialLoginType: string;
-}
 
 export default function AccountPage() {
   const router = useRouter();
@@ -35,25 +19,18 @@ export default function AccountPage() {
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: member } = useQuery<MemberMe>({
+  const { data: member } = useQuery<Member>({
     queryKey: ["member", "me"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return memberApi.getMe();
     },
   });
 
-  const { data: businesses = [] } = useQuery<Business[]>({
+  const { data: businesses = [] } = useQuery<Company[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/companies`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return (json.data ?? []).map((b: any) => ({
+      const data = await companyApi.getAll();
+      return data.map((b: any) => ({
         id: b.id,
         name: b.name,
         bizNumber: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
@@ -78,13 +55,7 @@ export default function AccountPage() {
     }
     setIsSubmitting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phoneNumber, hometaxUserId, birthDate, email }),
-      });
-      if (!res.ok) throw new Error();
+      await memberApi.updateMe({ name, phoneNumber, hometaxUserId, birthDate, email });
       await queryClient.invalidateQueries({ queryKey: ["member", "me"] });
       toast.success("회원 정보가 수정되었습니다.");
     } catch {

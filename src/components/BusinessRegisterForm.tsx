@@ -5,7 +5,7 @@ import { PlusCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { fetchWithAuth } from "@/lib/api";
+import { companyApi } from "@/lib/api";
 import {
   Drawer,
   DrawerContent,
@@ -67,14 +67,9 @@ export function BusinessRegisterForm({
 
     setLoading(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/companies/lookup/${rawDigits}`,
-      );
-      if (!res.ok) throw new Error();
-      const json = await res.json();
+      const res = await companyApi.lookup(rawDigits);
       setPendingBizNumber(formatBusinessNumber(rawDigits));
-      setPendingName(json.data.name ?? "");
+      setPendingName(res.name ?? "");
       setEditingIndex(null);
       setDrawerOpen(true);
     } catch {
@@ -128,12 +123,12 @@ export function BusinessRegisterForm({
     <>
       <div className="flex flex-1 flex-col px-6">
         <div className="mt-6">
-          <h1 className="text-[22px] font-bold leading-[1.45] tracking-tight text-black-100">
-            사업장 정보를 입력해주세요 ({businesses.length}/{MAX_BUSINESSES})
-          </h1>
+          <label className="text-sm font-bold text-black-100">
+            보유 사업장
+          </label>
         </div>
 
-        <div className="mt-8 flex flex-col gap-3">
+        <div className="mt-2 flex flex-col gap-3">
           {businesses.map((biz, index) => (
             <Input
               key={index}

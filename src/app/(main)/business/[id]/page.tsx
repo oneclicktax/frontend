@@ -13,7 +13,18 @@ import {
   Download,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
+import {
+  memberApi,
+  companyApi,
+  businessApi,
+  withholdingTaxApi,
+  type Member,
+  type Company,
+  type TaxSchedule,
+  type TaxStatus,
+  type MonthStatusType,
+  type ScheduleResponse,
+} from "@/lib/api";
 import {
   MonthScroller,
   type MonthItem,
@@ -22,37 +33,7 @@ import {
 import { FilingInfoDrawer } from "./_components/FilingInfoDrawer";
 import { DraftConfirmDrawer } from "./_components/DraftConfirmDrawer";
 
-type TaxStatus =
-  | "required"
-  | "completed"
-  | "overdue"
-  | "hometax_required"
-  | "empty"
-  | "error_resolving"
-  | "refile_required";
-
-interface TaxSchedule {
-  label: string;
-  deadline: string;
-  status: TaxStatus;
-}
-
-type MonthStatusType = "default" | "completed" | "locked" | "error";
-
-interface Business {
-  id: number;
-  name: string;
-  bizNumber: string;
-}
-
-interface MemberMe {
-  name: string;
-  phoneNumber: string | null;
-  hometaxUserId: string | null;
-  birthDate: string | null;
-}
-
-function isMemberInfoComplete(member: MemberMe | undefined): boolean {
+function isMemberInfoComplete(member: Member | undefined): boolean {
   if (!member) return false;
   return (
     !!member.name?.trim() &&
@@ -189,25 +170,18 @@ function BusinessDetailContent() {
   const [draftDrawerOpen, setDraftDrawerOpen] = useState(false);
   const selectorRef = useRef<HTMLDivElement>(null);
 
-  const { data: memberData } = useQuery<MemberMe>({
+  const { data: memberData } = useQuery<Member>({
     queryKey: ["member", "me"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return memberApi.getMe();
     },
   });
 
-  const { data: businessList = [] } = useQuery<Business[]>({
+  const { data: businessList = [] } = useQuery<Company[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/companies`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return (json.data ?? []).map((b: any) => ({
+      const data = await companyApi.getAll();
+      return data.map((b: any) => ({
         id: b.id,
         name: b.name,
         bizNumber: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
@@ -218,16 +192,10 @@ function BusinessDetailContent() {
   const {
     data,
     isLoading,
-  } = useQuery<{ business: Business; schedule: TaxSchedule | null }>({
+  } = useQuery<ScheduleResponse>({
     queryKey: ["schedule", businessId, selected.year, selected.month],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/business/${businessId}/schedules?year=${selected.year}&month=${selected.month}`
-      );
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return businessApi.getSchedule(businessId, selected.year, selected.month);
     },
   });
 
@@ -236,11 +204,7 @@ function BusinessDetailContent() {
   >({
     queryKey: ["monthStatuses", businessId],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/business/${businessId}/month-statuses`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return businessApi.getMonthStatuses(businessId);
     },
   });
 
@@ -268,12 +232,7 @@ function BusinessDetailContent() {
   async function handleDownloadReceipt() {
     if (!jobId) return;
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/companies/${businessId}/withholding-tax/filing/${jobId}/receipt`,
-      );
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
+      const blob = await withholdingTaxApi.downloadReceipt(businessId, jobId);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
-import { fetchWithAuth } from "@/lib/api";
+import { memberApi, type Member } from "@/lib/api";
 import { getAccessToken, removeAccessToken } from "@/lib/auth";
 
 export function OnboardingGuard({ children }: { children: React.ReactNode }) {
@@ -12,15 +12,9 @@ export function OnboardingGuard({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
   const hasToken = !!getAccessToken();
 
-  const { data: member, isLoading, isError } = useQuery<{ termsAgreed: boolean }>({
+  const { data: member, isLoading, isError } = useQuery<Member>({
     queryKey: ["member", "me", "guard"],
-    queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
-    },
+    queryFn: () => memberApi.getMe(),
     enabled: hasToken,
     staleTime: 30_000,
     retry: 1,

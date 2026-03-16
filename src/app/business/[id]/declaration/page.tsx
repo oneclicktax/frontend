@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
+import { memberApi, companyApi, withholdingTaxApi, type Member, type TaxCalculationResult, type FilingStatus } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { IncomeEarner, TaxCalculation } from "./types";
@@ -62,20 +62,6 @@ import { StepEarnerInfo } from "./_components/StepEarnerInfo";
 import { StepPaymentNotice } from "./_components/StepPaymentNotice";
 import { StepReview } from "./_components/StepReview";
 
-interface TaxCalcApiResponse {
-  recipients: {
-    name: string;
-    incomeType: string;
-    preTaxAmount: number;
-    incomeTax: number;
-    localTax: number;
-    afterTaxAmount: number;
-  }[];
-  totalIncomeTax: number;
-  totalLocalTax: number;
-  totalTax: number;
-}
-
 function WithholdingTaxContent() {
   const params = useParams();
   const businessId = Number(params.id);
@@ -111,19 +97,10 @@ function WithholdingTaxContent() {
     [draftKey],
   );
 
-  const { data: member } = useQuery<{
-    name: string;
-    phoneNumber: string | null;
-    hometaxUserId: string | null;
-    birthDate: string | null;
-  }>({
+  const { data: member } = useQuery<Member>({
     queryKey: ["member", "me"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return memberApi.getMe();
     },
   });
 
@@ -134,11 +111,8 @@ function WithholdingTaxContent() {
   }>({
     queryKey: ["business-detail", businessId],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/companies`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      const biz = (json.data ?? []).find(
+      const data = await companyApi.getAll();
+      const biz = data.find(
         (b: { id: number }) => b.id === businessId,
       );
       if (!biz) throw new Error("사업장을 찾을 수 없습니다.");
@@ -156,28 +130,18 @@ function WithholdingTaxContent() {
   const isOverdue = searchParams.get("overdue") === "true";
 
   // 세금 계산 API 호출 (step 4 진입 시)
-  const { data: taxCalcData, isLoading: isTaxCalcLoading } = useQuery<TaxCalcApiResponse>({
+  const { data: taxCalcData, isLoading: isTaxCalcLoading } = useQuery<TaxCalculationResult>({
     queryKey: ["tax-calculate", businessId, earners],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/companies/${businessId}/withholding-tax/calculate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            recipients: earners.map((e) => ({
-              name: e.name,
-              incomeType: e.incomeType,
-              paymentAmount: e.amount,
-              amountType: e.amountType === "pre-tax" ? "PRE_TAX" : "AFTER_TAX",
-            })),
-          }),
-        },
+      return withholdingTaxApi.calculate(
+        businessId,
+        earners.map((e) => ({
+          name: e.name,
+          incomeType: e.incomeType,
+          paymentAmount: e.amount,
+          amountType: e.amountType === "pre-tax" ? "PRE_TAX" : "AFTER_TAX",
+        })),
       );
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
     },
     enabled: step === 4 && earners.length > 0,
   });
@@ -196,16 +160,10 @@ function WithholdingTaxContent() {
   };
 
   // 폴링: 신고 작업 상태 조회
-  const { data: filingStatus } = useQuery<{ status: string }>({
+  const { data: filingStatus } = useQuery<FilingStatus>({
     queryKey: ["filing-status", businessId, filingJobId],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/companies/${businessId}/withholding-tax/filing/${filingJobId}/status`,
-      );
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return withholdingTaxApi.getFilingStatus(businessId, filingJobId!);
     },
     enabled: !!filingJobId,
     refetchInterval: 2000,
@@ -233,41 +191,28 @@ function WithholdingTaxContent() {
     setIsSubmitting(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/companies/${businessId}/withholding-tax/filing`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            year,
-            month,
-            submitDate: calcSubmitDate(),
-            amendedReturn: isAmendment,
-            userName: member?.name ?? "",
-            phone: member?.phoneNumber ?? "",
-            hometaxUserId: member?.hometaxUserId ?? "",
-            birthDate: member?.birthDate ?? "",
-            representName: member?.name ?? "",
-            recipients: earners.map((e) => ({
-              name: e.name,
-              residentNumber: e.residentNumber,
-              phone: e.phone,
-              incomeType: e.incomeType,
-              paymentDate: e.paymentDate,
-              paymentAmount: e.amount,
-              amountType: e.amountType === "pre-tax" ? "PRE_TAX" : "AFTER_TAX",
-            })),
-          }),
-        },
-      );
+      const result = await withholdingTaxApi.file(businessId, {
+        year,
+        month,
+        submitDate: calcSubmitDate(),
+        amendedReturn: isAmendment,
+        userName: member?.name ?? "",
+        phone: member?.phoneNumber ?? "",
+        hometaxUserId: member?.hometaxUserId ?? "",
+        birthDate: member?.birthDate ?? "",
+        representName: member?.name ?? "",
+        recipients: earners.map((e) => ({
+          name: e.name,
+          residentNumber: e.residentNumber,
+          phone: e.phone,
+          incomeType: e.incomeType,
+          paymentDate: e.paymentDate,
+          paymentAmount: e.amount,
+          amountType: e.amountType === "pre-tax" ? "PRE_TAX" : "AFTER_TAX",
+        })),
+      });
 
-      if (!res.ok) {
-        throw new Error("신고 요청 실패");
-      }
-
-      const json = await res.json();
-      setFilingJobId(json.data.jobId);
+      setFilingJobId(result.jobId);
     } catch {
       setIsSubmitting(false);
       toast.error("신고 요청에 실패했습니다. 다시 시도해주세요.");

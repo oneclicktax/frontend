@@ -3,23 +3,14 @@
 import Link from "next/link";
 import { Bell, Settings, Plus, ChevronRight, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
-
-interface Business {
-  id: number;
-  name: string;
-  bizNumber: string;
-}
+import { companyApi, type Company } from "@/lib/api";
 
 export default function HomePage() {
-  const { data: businesses = [], isLoading } = useQuery<Business[]>({
+  const { data: businesses = [], isLoading } = useQuery<Company[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/companies`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return (json.data ?? []).map((b: any) => ({
+      const data = await companyApi.getAll();
+      return data.map((b: any) => ({
         id: b.id,
         name: b.name,
         bizNumber: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),

@@ -6,7 +6,7 @@ import { Bell, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { removeAccessToken } from "@/lib/auth";
 import { useQuery } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
+import { memberApi, type Member } from "@/lib/api";
 
 const menuItems = [
   { label: "계정 설정", href: "/profile/account" },
@@ -18,22 +18,12 @@ const menuItems = [
   { label: "앱 공유하기", href: "#" },
 ];
 
-interface MemberMe {
-  name: string;
-}
-
 export default function ProfilePage() {
   const router = useRouter();
 
-  const { data: member } = useQuery<MemberMe>({
+  const { data: member } = useQuery<Member>({
     queryKey: ["member", "me"],
-    queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
-    },
+    queryFn: () => memberApi.getMe(),
   });
 
   return (

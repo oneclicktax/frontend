@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
+import { memberApi, type Member } from "@/lib/api";
 import { toast } from "sonner";
 import {
   Drawer,
@@ -12,13 +12,6 @@ import {
   DrawerDescription,
   DrawerFooter,
 } from "@/components/ui/drawer";
-
-interface MemberMe {
-  name: string;
-  phoneNumber: string | null;
-  hometaxUserId: string | null;
-  birthDate: string | null;
-}
 
 interface FilingInfoDrawerProps {
   open: boolean;
@@ -39,14 +32,10 @@ export function FilingInfoDrawer({
   const [birthDate, setBirthDate] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { data: member } = useQuery<MemberMe>({
+  const { data: member } = useQuery<Member>({
     queryKey: ["member", "me"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data;
+      return memberApi.getMe();
     },
   });
 
@@ -72,18 +61,12 @@ export function FilingInfoDrawer({
     }
     setIsSubmitting(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/members/me`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          phoneNumber,
-          hometaxUserId,
-          birthDate,
-        }),
+      await memberApi.updateMe({
+        name,
+        phoneNumber,
+        hometaxUserId,
+        birthDate,
       });
-      if (!res.ok) throw new Error();
       await queryClient.invalidateQueries({ queryKey: ["member", "me"] });
       toast.success("회원 정보가 저장되었습니다.");
       onOpenChange(false);

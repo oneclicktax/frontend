@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Settings, ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { fetchWithAuth } from "@/lib/api";
+import { companyApi, withholdingTaxApi, type Company, type DocumentItem } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -20,19 +20,6 @@ import {
   WheelPickerWrapper,
   type WheelPickerOption,
 } from "@/components/wheel-picker/wheel-picker";
-
-interface Business {
-  id: number;
-  name: string;
-  bizNumber: string;
-}
-
-interface DocumentItem {
-  id: number;
-  documentType: string;
-  documentName: string;
-  createdAt: string;
-}
 
 type Category = "전체" | "신고내역" | "원천세" | "지급명세서";
 
@@ -66,14 +53,11 @@ export default function DocumentsPage() {
   const [draftYear, setDraftYear] = useState(currentYear);
   const [draftMonth, setDraftMonth] = useState(1);
 
-  const { data: businesses = [] } = useQuery<Business[]>({
+  const { data: businesses = [] } = useQuery<Company[]>({
     queryKey: ["businesses"],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(`${apiUrl}/api/companies`);
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return (json.data ?? []).map((b: any) => ({
+      const data = await companyApi.getAll();
+      return data.map((b: any) => ({
         id: b.id,
         name: b.name,
         bizNumber: b.bizNumber.replace(/(\d{3})(\d{2})(\d{5})/, "$1 $2 $3"),
@@ -92,13 +76,7 @@ export default function DocumentsPage() {
   const { data: documents = [] } = useQuery<DocumentItem[]>({
     queryKey: ["documents", businessId, belongYearMonth],
     queryFn: async () => {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/companies/${businessId}/withholding-tax/documents?belongYearMonth=${belongYearMonth}`,
-      );
-      if (!res.ok) throw new Error();
-      const json = await res.json();
-      return json.data?.documents ?? [];
+      return withholdingTaxApi.getDocuments(businessId!, belongYearMonth!);
     },
     enabled: !!businessId && !!belongYearMonth,
   });
@@ -143,12 +121,7 @@ export default function DocumentsPage() {
 
   const handleDownload = async (doc: DocumentItem) => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
-      const res = await fetchWithAuth(
-        `${apiUrl}/api/companies/${businessId}/withholding-tax/documents/${doc.id}/download`,
-      );
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
+      const blob = await withholdingTaxApi.downloadDocument(businessId!, doc.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
