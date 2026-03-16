@@ -55,7 +55,7 @@ export default function HomePage() {
               <span className="text-sm font-medium text-black-100">
                 사업장 등록하기
               </span>
-              <Plus size={24} className="self-center text-black-60" />
+              <Plus size={24} className="self-end text-black-60" />
             </Link>
           </div>
         )}
