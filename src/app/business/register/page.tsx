@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { memberApi, companyApi, type Member } from "@/lib/api";
-import { Input } from "@/components/ui/input";
+import { companyApi } from "@/lib/api";
 import {
   BusinessRegisterForm,
   type Business,
@@ -23,7 +22,6 @@ export default function BusinessRegisterPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [hometaxUserId, setHometaxUserId] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
   const { data: existingBusinesses = [] } = useQuery<Business[]>({
@@ -38,19 +36,6 @@ export default function BusinessRegisterPage() {
     },
   });
 
-  const { data: member } = useQuery<Member>({
-    queryKey: ["member-me"],
-    queryFn: async () => {
-      return memberApi.getMe();
-    },
-  });
-
-  useEffect(() => {
-    if (member?.hometaxUserId) {
-      setHometaxUserId(member.hometaxUserId);
-    }
-  }, [member]);
-
   useEffect(() => {
     if (existingBusinesses.length > 0 && businesses.length === 0) {
       setBusinesses(existingBusinesses);
@@ -59,16 +44,8 @@ export default function BusinessRegisterPage() {
 
   async function handleSave() {
     if (submitting) return;
-    if (!hometaxUserId.trim()) {
-      toast.error("홈택스 아이디를 입력해주세요.");
-      return;
-    }
     setSubmitting(true);
     try {
-      // 홈택스 아이디 저장
-      await memberApi.updateMe({ hometaxUserId: hometaxUserId.trim() });
-
-      // 사업장 저장
       await companyApi.save(
         businesses.map((b) => ({
           name: b.name,
@@ -107,16 +84,6 @@ export default function BusinessRegisterPage() {
             사업장을 등록해주세요.
           </h1>
 
-          <div className="mt-6 flex flex-col gap-2">
-            <label className="text-sm font-bold text-black-100">
-              홈택스 아이디
-            </label>
-            <Input
-              value={hometaxUserId}
-              onChange={(e) => setHometaxUserId(e.target.value)}
-              placeholder="홈택스 아이디 입력"
-            />
-          </div>
         </div>
 
         <BusinessRegisterForm
