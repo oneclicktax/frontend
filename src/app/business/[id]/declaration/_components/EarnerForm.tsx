@@ -17,9 +17,9 @@ import {
   DrawerContent,
   DrawerFooter,
 } from "@/components/ui/drawer";
+import dayjs from "dayjs";
 import type { IncomeEarner, IncomeType, AmountType } from "../types";
 import { INCOME_TYPE_OPTIONS } from "../types";
-import { DateDrumPicker } from "./DateDrumPicker";
 
 interface EarnerFormProps {
   earner: Partial<IncomeEarner>;
@@ -109,9 +109,9 @@ export function EarnerForm({
   const [incomeTypeOpen, setIncomeTypeOpen] = useState(false);
   const [businessCodeOpen, setBusinessCodeOpen] = useState(false);
   const [incomeTypeInfoOpen, setIncomeTypeInfoOpen] = useState(false);
-  const [paymentDateInfoOpen, setPaymentDateInfoOpen] = useState(false);
 
-  const defaultPaymentDate = `${belongYear}-${String(belongMonth).padStart(2, "0")}-01`;
+  const lastDayOfMonth = dayjs(`${belongYear}-${String(belongMonth).padStart(2, "0")}`).endOf("month");
+  const defaultPaymentDate = lastDayOfMonth.format("YYYY-MM-DD");
 
   const form = useForm<EarnerFormValues>({
     defaultValues: {
@@ -358,34 +358,18 @@ export function EarnerForm({
           />
         )}
 
-        {/* 지급 날짜 */}
-        <FormField
-          control={form.control}
-          name="paymentDate"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center gap-1">
-                <FormLabel className="text-base font-bold text-black-100">
-                  지급 날짜
-                </FormLabel>
-                <button
-                  type="button"
-                  onClick={() => setPaymentDateInfoOpen(true)}
-                >
-                  <Info size={16} className="text-black-60" />
-                </button>
-              </div>
-              <FormControl>
-                <DateDrumPicker
-                  value={field.value || defaultPaymentDate}
-                  onChange={field.onChange}
-                  fixedYear={belongYear}
-                  fixedMonth={belongMonth}
-                />
-              </FormControl>
-            </FormItem>
-          )}
-        />
+        {/* 지급 날짜 (귀속월 말일 고정) */}
+        <div>
+          <label className="text-base font-bold text-black-100">
+            지급 날짜
+          </label>
+          <Input
+            readOnly
+            disabled
+            value={lastDayOfMonth.format("YYYY. MM. DD")}
+            className="mt-2 border-black-100 bg-black-20 text-sm"
+          />
+        </div>
 
         {/* 소득자 지급액 */}
         <FormField
@@ -455,32 +439,6 @@ export function EarnerForm({
           </DrawerContent>
         </Drawer>
 
-        {/* 지급 날짜 안내 Drawer */}
-        <Drawer
-          open={paymentDateInfoOpen}
-          onOpenChange={setPaymentDateInfoOpen}
-        >
-          <DrawerContent>
-            <div className="px-6 pt-6 pb-2">
-              <p className="text-base font-bold text-black-100">
-                귀속월과 지급월은 동일하게 맞춰주세요
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-black-60">
-                지급일이 귀속월에 해당하지 않는 경우, 귀속월의 말일로 입력해
-                주세요.
-              </p>
-            </div>
-            <DrawerFooter>
-              <Button
-                size="xl"
-                className="w-full"
-                onClick={() => setPaymentDateInfoOpen(false)}
-              >
-                확인
-              </Button>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
       </div>
     </Form>
   );

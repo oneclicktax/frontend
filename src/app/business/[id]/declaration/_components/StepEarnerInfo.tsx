@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlusCircle } from "lucide-react";
+import dayjs from "dayjs";
 import { Button } from "@/components/ui/button";
 import type { IncomeEarner } from "../types";
 import { EarnerForm } from "./EarnerForm";
@@ -40,7 +41,7 @@ function getDefaultFormData(
     incomeType: "OTHER",
     incomeCode: "76",
     amountType: "pre-tax",
-    paymentDate: `${belongYear}-${String(belongMonth).padStart(2, "0")}-01`,
+    paymentDate: dayjs(`${belongYear}-${String(belongMonth).padStart(2, "0")}`).endOf("month").format("YYYY-MM-DD"),
   };
 }
 

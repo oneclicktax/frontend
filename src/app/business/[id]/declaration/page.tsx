@@ -7,16 +7,13 @@ import { useQuery } from "@tanstack/react-query";
 import { memberApi, companyApi, withholdingTaxApi, type Member, type TaxCalculationResult, type FilingStatus } from "@/lib/api";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import dayjs from "dayjs";
 import type { IncomeEarner, TaxCalculation } from "./types";
 
 
 // 제출일: 오늘 날짜
 function calcSubmitDate(): string {
-  const today = new Date();
-  const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, "0");
-  const d = String(today.getDate()).padStart(2, "0");
-  return `${y}-${m}-${d}`;
+  return dayjs().format("YYYY-MM-DD");
 }
 
 const STATUS_MESSAGES: Record<string, string> = {
