@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { useQuery } from "@tanstack/react-query";
@@ -103,8 +103,14 @@ function OnboardingContent() {
   }
 
   // 약관 동의 완료 시 사업장 등록으로 리다이렉트
-  if (member?.termsAgreed) {
-    router.replace("/business/register");
+  const shouldRedirect = !memberLoading && member?.termsAgreed;
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.replace("/business/register");
+    }
+  }, [shouldRedirect, router]);
+
+  if (shouldRedirect) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Loader2 size={32} className="animate-spin text-primary-100" />
