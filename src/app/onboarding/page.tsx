@@ -94,14 +94,6 @@ function OnboardingContent() {
     }
   }
 
-  if (memberLoading) {
-    return (
-      <div className="flex min-h-dvh items-center justify-center">
-        <Loader2 size={32} className="animate-spin text-primary-100" />
-      </div>
-    );
-  }
-
   // 약관 동의 완료 시 사업장 등록으로 리다이렉트
   const shouldRedirect = !memberLoading && member?.termsAgreed;
   useEffect(() => {
@@ -110,7 +102,7 @@ function OnboardingContent() {
     }
   }, [shouldRedirect, router]);
 
-  if (shouldRedirect) {
+  if (memberLoading || shouldRedirect) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <Loader2 size={32} className="animate-spin text-primary-100" />
