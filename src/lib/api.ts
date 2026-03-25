@@ -163,6 +163,8 @@ export const memberApi = {
 
   updateMe: (data: MemberUpdateRequest) =>
     api.patch("/api/members/me", data),
+
+  deleteMe: () => api.delete("/api/members/me"),
 };
 
 // ── Company API ──

@@ -6,7 +6,17 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { memberApi, companyApi, type Member, type Company } from "@/lib/api";
+import { removeAccessToken } from "@/lib/auth";
 import { toast } from "sonner";
+import { overlay } from "overlay-kit";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from "@/components/ui/drawer";
 
 export default function AccountPage() {
   const router = useRouter();
@@ -47,6 +57,46 @@ export default function AccountPage() {
       setEmail(member.email ?? "");
     }
   }, [member]);
+
+  function openWithdrawDrawer() {
+    overlay.open(({ isOpen, close }) => (
+      <Drawer open={isOpen} onOpenChange={(open) => { if (!open) close(); }}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle className="text-lg font-bold text-black-100">
+              원클릭 원천세를 탈퇴할까요?
+            </DrawerTitle>
+            <DrawerDescription className="text-sm text-black-60">
+              탈퇴 즉시 계정 정보를 복구할 수 없어요.
+            </DrawerDescription>
+          </DrawerHeader>
+          <DrawerFooter className="flex-row gap-3">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={close}
+            >
+              취소
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={async () => {
+                try {
+                  await memberApi.deleteMe();
+                  removeAccessToken();
+                  window.location.href = "/login";
+                } catch {
+                  toast.error("계정 탈퇴에 실패했습니다.");
+                }
+              }}
+            >
+              탈퇴
+            </Button>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    ));
+  }
 
   async function handleSubmit() {
     if (!name.trim()) {
@@ -164,9 +214,7 @@ export default function AccountPage() {
         <Button
           variant="outline"
           className="h-14 w-full rounded-lg border-black-40 text-base font-bold text-black-60"
-          onClick={() => {
-            // TODO: 계정 탈퇴
-          }}
+          onClick={() => openWithdrawDrawer()}
         >
           계정 탈퇴
         </Button>
@@ -183,6 +231,7 @@ export default function AccountPage() {
           {isSubmitting ? "수정 중..." : "수정하기"}
         </button>
       </div>
+
     </div>
   );
 }

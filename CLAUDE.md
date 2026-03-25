@@ -74,3 +74,4 @@ src/
 - **스타일링**: Tailwind CSS 유틸리티 클래스 사용, `cn()` 으로 조건부 클래스 조합
 - **서버/클라이언트 구분**: 기본은 서버 컴포넌트, 필요시 `"use client"` 명시
 - **상태 관리**: 서버 상태는 React Query, 클라이언트 상태는 React 내장 훅 사용
+- **오버레이 관리**: Drawer, Dialog 등 오버레이는 `overlay-kit`의 `overlay.open()`으로 관리 (useState로 open 상태 직접 관리하지 않음)
