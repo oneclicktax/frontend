@@ -193,22 +193,24 @@ export default function AccountPage() {
         </div>
 
         {/* 사업장 */}
-        <div className="flex flex-col gap-2">
-          <label className="text-base font-bold text-black-100">사업장</label>
-          {businesses.map((biz) => (
-            <button
-              key={biz.id}
-              type="button"
-              onClick={() => router.push("/business/register")}
-              className="flex h-14 items-center justify-between rounded border border-black-40 px-4"
-            >
-              <span className="text-base text-black-100">
-                {biz.name}({biz.bizNumber})
-              </span>
-              <ChevronRight size={20} className="text-black-60" />
-            </button>
-          ))}
-        </div>
+        {businesses.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-base font-bold text-black-100">사업장</label>
+            {businesses.map((biz) => (
+              <button
+                key={biz.id}
+                type="button"
+                onClick={() => router.push("/business/register")}
+                className="flex h-14 items-center justify-between rounded border border-black-40 px-4"
+              >
+                <span className="text-base text-black-100">
+                  {biz.name}({biz.bizNumber})
+                </span>
+                <ChevronRight size={20} className="text-black-60" />
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* 계정 탈퇴 */}
         <Button
