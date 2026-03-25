@@ -29,10 +29,13 @@ export default function LoginSuccessPage() {
 
         if (!member?.termsAgreed) {
           // 약관 미동의 → 온보딩 1단계부터
-          router.replace("/onboarding");
+          // 뒤로가기 시 로그인이 아닌 홈으로 가도록 현재 항목을 /home으로 교체 후 이동
+          window.history.replaceState(null, "", "/home");
+          window.location.assign("/onboarding");
         } else if (!hasCompanies) {
-          // 약관 동의했지만 사업장 없음 → 온보딩 2단계부터
-          router.replace("/business/register");
+          // 약관 동의했지만 사업장 없음 → 사업장 등록으로
+          window.history.replaceState(null, "", "/home");
+          window.location.assign("/business/register");
         } else {
           router.replace("/home");
         }
