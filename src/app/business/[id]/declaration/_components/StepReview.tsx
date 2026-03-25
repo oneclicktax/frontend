@@ -3,6 +3,7 @@
 import { Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { IncomeEarner, TaxCalculation } from "../types";
+import { INCOME_TYPE_OPTIONS } from "../types";
 import { ReviewSection } from "./ReviewSection";
 
 interface RecipientTax {
@@ -93,6 +94,12 @@ export function StepReview({
                     {rt.name}
                   </span>
                   <div className="flex justify-between">
+                    <span className="text-xs text-black-60">소득 지급 유형</span>
+                    <span className="text-xs text-black-100">
+                      {INCOME_TYPE_OPTIONS.find((o) => o.value === rt.incomeType)?.label ?? rt.incomeType}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-xs text-black-60">세전 금액</span>
                     <span className="text-xs text-black-100">
                       {rt.preTaxAmount.toLocaleString("ko-KR")}원
@@ -112,6 +119,12 @@ export function StepReview({
                     </span>
                     <span className="text-xs text-black-100">
                       {rt.localTax.toLocaleString("ko-KR")}원
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-xs text-black-60">세후 금액</span>
+                    <span className="text-xs text-black-100">
+                      {rt.afterTaxAmount.toLocaleString("ko-KR")}원
                     </span>
                   </div>
                 </div>
