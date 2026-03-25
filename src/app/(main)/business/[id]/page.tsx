@@ -25,6 +25,7 @@ import {
   type MonthStatusType,
   type ScheduleResponse,
 } from "@/lib/api";
+import { getFilingDeadline } from "@/lib/deadline";
 import {
   MonthScroller,
   type MonthItem,
@@ -95,13 +96,18 @@ function StatusLabel({ status }: { status: TaxStatus }) {
 function DeadlineLabel({
   status,
   deadline,
+  isLoading,
 }: {
   status: TaxStatus;
   deadline: string;
+  isLoading?: boolean;
 }) {
   switch (status) {
     case "required":
     case "completed":
+      if (isLoading) {
+        return <div className="h-4 w-20 animate-pulse rounded bg-black-20" />;
+      }
       return <p className="text-xs text-black-60">{deadline}</p>;
     case "overdue":
       return <p className="text-xs text-black-60">기한 후</p>;
@@ -197,6 +203,13 @@ function BusinessDetailContent() {
     queryFn: async () => {
       return businessApi.getSchedule(businessId, selected.year, selected.month);
     },
+  });
+
+  // 공휴일 보정된 신고 기한 계산
+  const belong = getBelongPeriod(selected.year, selected.month);
+  const { data: adjustedDeadline, isLoading: isDeadlineLoading } = useQuery<string>({
+    queryKey: ["deadline", belong.year, belong.month],
+    queryFn: () => getFilingDeadline(belong.year, belong.month),
   });
 
   const { data: monthStatuses = {} } = useQuery<
@@ -380,7 +393,8 @@ function BusinessDetailContent() {
                 <div className="text-right">
                   <DeadlineLabel
                     status={schedule.status}
-                    deadline={schedule.deadline}
+                    deadline={adjustedDeadline ?? ""}
+                    isLoading={isDeadlineLoading}
                   />
                   <StatusLabel status={schedule.status} />
                 </div>
